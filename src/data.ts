@@ -561,6 +561,47 @@ export const MANGA: ContentItem[] = [
 
 export const MOVIES: ContentItem[] = [
     {
+        id: "m-masters-universe",
+        title: "Masters of the Universe",
+        description: "An epic sci-fi fantasy adventure where He-Man and his allies battle the evil forces of Skeletor for control of the universe.",
+        year: "2024",
+        rating: "7.8",
+        duration: "1h 52m",
+        genre: ["Action", "Adventure", "Fantasy"],
+        image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTqhXS0ANmcfMTx32QX5eV4xF_qx3D28JtC54CKKfsBH0JBcRINGK0xMfIbzcKqP8DhFh5y&s=10",
+        mood: "Epic",
+        type: "movie",
+        driveLink: "https://drive.google.com/file/d/1SwZ8M7hGahcWTD0OptuayAD1Ww0acsR5/view",
+        isNewRelease: true
+    },
+    {
+        id: "m-scary-movie-6",
+        title: "Scary Movie 6",
+        description: "The hilarious parody franchise returns to poke fun at the latest modern horror blockbusters and internet memes.",
+        year: "2026",
+        rating: "6.5",
+        duration: "1h 35m",
+        genre: ["Comedy"],
+        image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRI47Clg86H1uqFXqoln7qrh1txUz7YdH7fU1sYzBG2xjFzv8RMlIR2c10QDkLJfLxkT307Ow&s=10",
+        mood: "Wacky",
+        type: "movie",
+        driveLink: "https://drive.google.com/file/d/1f6dlUlcZRfpZDEe5zmKSztiQaSq7zTjn/view",
+        isNewRelease: true
+    },
+    {
+        id: "m-backrooms",
+        title: "Backrooms",
+        description: "A terrifying cinematic adaptation of the viral creepypasta. A young filmmaker accidentally clips through reality and becomes trapped in a seemingly infinite maze of empty, eerie yellow rooms.",
+        year: "2024",
+        rating: "7.5",
+        duration: "1h 40m",
+        genre: ["Horror", "Mystery", "Sci-Fi"],
+        image: "https://upload.wikimedia.org/wikipedia/en/3/3d/Backrooms_%28film%29_poster.jpg",
+        mood: "Eerie",
+        type: "movie",
+        driveLink: "https://drive.google.com/file/d/18nLws3FusSwXgQxTmAv-JmQijlCytXzD/view?usp=drive_link"
+    },
+    {
         id: "m-swapped",
         title: "Swapped",
         description: "Two people have their bodies switched under mysterious circumstances and must navigate each other's lives.",
@@ -571,8 +612,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRltnK-rQZsujDIBS1dVmqsNjWygnjJBHFE8wOtyF7DOeUrkxjsSvOEoGM21nd_IPt8T4pEJQ&s=10",
         mood: "Wacky",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/1qn0JShcgJIVNFaJBwljbR1tsudAYHzct/view",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/1qn0JShcgJIVNFaJBwljbR1tsudAYHzct/view"
     },
     {
         id: "m-obsession",
@@ -585,8 +625,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT-FF8iQ-Pj57hN-PrgJCGH0czzEwpCBdmcqeUDeMnTSv2QxkXVMe5b-1ekxfmIQnBQmv3N&s=10",
         mood: "Intense",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/1bQXOtjLq5VWPf7TGulIbH97MeS9bp40e/view?usp=drive_link",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/1bQXOtjLq5VWPf7TGulIbH97MeS9bp40e/view?usp=drive_link"
     },
     {
         id: "m-mandalorian-grogu",
@@ -599,8 +638,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSnpAd4a3Kpxgg3vxNFj-1tvXw3VRUMcsq5_LDxBpPec6Na-8h1YfkSuUW628AC76DgzMkIDK4hp_24jzhkPNj585xiHiHG62W2DWQh4o&s=10",
         mood: "Epic",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/1NR87GoLZVMCFPEKGgXWEJS7e5V_PbLkh/view?usp=drive_link",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/1NR87GoLZVMCFPEKGgXWEJS7e5V_PbLkh/view?usp=drive_link"
     },
     {
         id: "m-the-devil-wears-prada-2",
@@ -613,8 +651,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://m.media-amazon.com/images/M/MV5BZmM3ZDU3ODItZmY5Yi00OTQ2LWE5OTctZTA5NDBhMWJkOGY3XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg",
         mood: "Glamorous",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/1s0OZcv14uSc6UKIOodQvI16e0jhDOdn6/view",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/1s0OZcv14uSc6UKIOodQvI16e0jhDOdn6/view"
     },
     {
         id: "m-it-chapter-two",
@@ -627,8 +664,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTyNG7QR61t-wtAhqWCiHKIiYerYU8bhNReSMQT7qxeOg521q9am1QjGi6SDJ_E7fd9PgeISw&s=10",
         mood: "Terrifying",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/1vLFTFzlvu9TJXbcL40gnag9Xart3pKQI/view?usp=drive_link",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/1vLFTFzlvu9TJXbcL40gnag9Xart3pKQI/view?usp=drive_link"
     },
     {
         id: "m-whiplash",
@@ -641,8 +677,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQGCfct_aLEbOIQ_pOq8LZffoKgEVjHraAlLLIuhXTkSy0q1fvO5XpCnvQKbil7Mpw6L1IL&s=10",
         mood: "Intense",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/1NsMv5rGihaprmvDovnW4RT7_R15G8GE7/view",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/1NsMv5rGihaprmvDovnW4RT7_R15G8GE7/view"
     },
     {
         id: "m-evil-bong-2",
@@ -655,8 +690,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRuNJQ9Bkn8UsMsUMqEQ6dwjj4uiShP4ki-J64A6oz76SdoS7urlibFQcmSUAJwhrXX-5kj&s=10",
         mood: "Wacky",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/157_G6Rk88WEiWF66j9bT7RoNvb-7c1sD/view?usp=drive_link",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/157_G6Rk88WEiWF66j9bT7RoNvb-7c1sD/view?usp=drive_link"
     },
     {
         id: "m-aggretsuko-xmas",
@@ -669,8 +703,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://m.media-amazon.com/images/M/MV5BZGVhY2RhY2ItZmQyYS00YmYyLTlmN2QtZGY3NDQ5OGExZDQ4XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg",
         mood: "Festive",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/1S3iIuWxIMaH89FFL89wMX6Wkq-Q8YzZ7ZM/view",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/1S3iIuWxIMaH89FFL89wMX6Wkq-Q8YzZ7ZM/view"
     },
     {
         id: "m-dear-david",
@@ -683,8 +716,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlYQaae-BuSJ-PnuyWl70P8QnHoidw2F09cAwVc8zEvQk0WEL_ELXGBqtGUIBo1VXWqjyP&s=10",
         mood: "Scary",
         type: "movie",
-        driveLink: "http://drive.google.com/file/d/1P-f4GsFsQv0gGuQlBh-l5QTE7dNKqnOX/view?usp=drive_link",
-        isNewRelease: true
+        driveLink: "http://drive.google.com/file/d/1P-f4GsFsQv0gGuQlBh-l5QTE7dNKqnOX/view?usp=drive_link"
     },
     {
         id: "m-mk2",
@@ -697,8 +729,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRIqfTpDY6Om26pVPhu455QaXDhKArMCc-TcZ5BtsILxZTEaeu_5ilxWZ6aujKq-DlKZZxeng&s=10",
         mood: "Action-packed",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/1DYP51mxiszQAlgUAIepXVm95dlA9kjat/view?usp=drive_link",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/1DYP51mxiszQAlgUAIepXVm95dlA9kjat/view?usp=drive_link"
     },
     {
         id: "m-kill-bill",
@@ -711,8 +742,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSAJFGA_ykKA8Q1qTl3tHeuK6TrTHCYjhDvn9friciphA&s=10",
         mood: "Bloodthirsty",
         type: "movie",
-        driveLink: "https://drive.google.com/drive/folders/15caY7ohh1fTIcvEUBrYY9w1g3TJvVYKN",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/drive/folders/15caY7ohh1fTIcvEUBrYY9w1g3TJvVYKN"
     },
     {
         id: "m-iron-lung",
@@ -725,8 +755,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTU3t5opMKDnRFiADLLvx8K_9h7dJ1yt2rApp44qENAy3GAIRZ8Zhzm21z_PVNcc3cFrFeY38TR-BVPMp7fzRUHz5MU16MIbAsBYpPlEg&s=10",
         mood: "Claustrophobic",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/1x5AAIcDcYIqTRw14fQoLjYvBjixpfWNO/view?usp=drivesdk",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/1x5AAIcDcYIqTRw14fQoLjYvBjixpfWNO/view?usp=drivesdk"
     },
     {
         id: "m-avatar-aang",
@@ -739,8 +768,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://f.woowoowoowoo.net/resize/250x400/7b/d2/7bd29fa00f19e1502ccba19fe8265cd8/7bd29fa00f19e1502ccba19fe8265cd8.jpg",
         mood: "Epic",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/1GLkdpNumWIYJ8rw6kUJgf5NiDLsaUDLU/view?usp=drive_link",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/1GLkdpNumWIYJ8rw6kUJgf5NiDLsaUDLU/view?usp=drive_link"
     },
     {
         id: "m-the-bride",
@@ -753,8 +781,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRPpfhYclJ__gzFBMVOhnqGc_UgKzniCLPQCxhHg3KC2hl4jUCAbbz6USY&s=10",
         mood: "Dark",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/1xSofJ9d2rDIGNlGqiVPcYJgG00oSOS0b/view?usp=drivesdk",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/1xSofJ9d2rDIGNlGqiVPcYJgG00oSOS0b/view?usp=drivesdk"
     },
     {
         id: "m-frankensteins-bride",
@@ -767,8 +794,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://pics.filmaffinity.com/Frankenstein_s_Bride-528687358-mmed.jpg",
         mood: "Classic",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/1yF3yrdhJ1LM3sMFyvjiMXqxBM1y05llK/view?usp=drivesdk",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/1yF3yrdhJ1LM3sMFyvjiMXqxBM1y05llK/view?usp=drivesdk"
     },
     {
         id: "m-frankenstein",
@@ -781,8 +807,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTa5x8kZniVZKWITB_3vd1mdgtN8gLwF8W4D5wgcQVs6w&s=10",
         mood: "Classic",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/1E78ETKieIUSm9-oGon7lq3NxOy94MGqd/view?usp=drivesdk",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/1E78ETKieIUSm9-oGon7lq3NxOy94MGqd/view?usp=drivesdk"
     },
     {
         id: "m-axl",
@@ -795,8 +820,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS82HGjoi8Vwen7QgaYXxVRPYOzvL_5M777Yg&s",
         mood: "Heartwarming",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/1XZg46Ss_6P2_cY_sTjPwN0zlDyy9T47O/view?usp=drivesdk",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/1XZg46Ss_6P2_cY_sTjPwN0zlDyy9T47O/view?usp=drivesdk"
     },
     {
         id: "m419",
@@ -809,8 +833,7 @@ export const MOVIES: ContentItem[] = [
         image: "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcQL2cOUD1HjXl3pCCXGiSC5jgGa2Iwlrty_DnkqCHlY9KcM9niZ",
         mood: "Dramatic",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/1OqJ14L50E0wHdYrTq6M5cEFoUjGl6ENB/view?usp=drive_link",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/1OqJ14L50E0wHdYrTq6M5cEFoUjGl6ENB/view?usp=drive_link"
     },
     {
         id: "m2",
@@ -5789,12 +5812,25 @@ export const MOVIES: ContentItem[] = [
         image: "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcQ9EADPoL_6mV9wkpoHLbVooMGsWJ3QfgYNFJPE9sYYaRDbzbfA",
         mood: "Wacky",
         type: "movie",
-        driveLink: "https://drive.google.com/file/d/1L3z0yIbPpzYP0LoVhmze4_pm63VzzpsW/view",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/file/d/1L3z0yIbPpzYP0LoVhmze4_pm63VzzpsW/view"
     },
 ];
 
 export const TV_SHOWS: ContentItem[] = [
+    {
+        id: "tv-among-us",
+        title: "Among Us",
+        description: "The highly anticipated animated series based on the hit social deduction game. Trust no one as crewmates try to find the hidden impostors before it's too late.",
+        year: "2025",
+        rating: "8.2",
+        duration: "1 Season",
+        genre: ["Animation", "Comedy", "Mystery", "Sci-Fi"],
+        image: "https://m.media-amazon.com/images/M/MV5BNTdhZjMyOGItZTVlZS00NTEzLTlkYmYtMDM2MDgwNTYwZDNiXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg",
+        mood: "Suspenseful",
+        type: "tv",
+        driveLink: "https://drive.google.com/drive/folders/1cyqfygwjo5Da9KxORfa1BkYoY9vu5Tkw",
+        isNewRelease: true
+    },
     {
         id: "tv-the-boys",
         title: "The Boys",
@@ -5806,8 +5842,7 @@ export const TV_SHOWS: ContentItem[] = [
         image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQIBB5S0PwP_hi91ZedgGnEl124cKVlqANokURHXOAk4RQawn-xq_6XQjP4l5gKfdtzx9Bl&s=10",
         mood: "Dark",
         type: "tv",
-        driveLink: "https://drive.google.com/drive/folders/1DabZ3R9pCb-ZWup6ulB2tYFvSv9V83K9?usp=drive_link",
-        isNewRelease: true
+        driveLink: "https://drive.google.com/drive/folders/1DabZ3R9pCb-ZWup6ulB2tYFvSv9V83K9?usp=drive_link"
     },
     {
         id: "tv-aggretsuko",

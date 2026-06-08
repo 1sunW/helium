@@ -80,6 +80,7 @@ export default function App() {
   const [selectedMovie, setSelectedMovie] = useState<ContentItem | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeView, setActiveView] = useState<'discovery' | 'watchlist' | 'library'>('discovery');
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [libraryIds, setLibraryIds] = useState<string[]>([]);
   const [watchedIds, setWatchedIds] = useState<string[]>([]);
   const [clickCounts, setClickCounts] = useState<Record<string, number>>({});
@@ -502,6 +503,7 @@ export default function App() {
 
   const handleCategorySelect = (category: CategoryType) => {
     setActiveCategory(category);
+    setSelectedGenre(null);
     if ((activeView === 'library' || activeView === 'watchlist') && category !== 'Movies' && category !== 'Anime' && category !== 'TV Shows' && category !== 'Books' && category !== 'Hacks') {
       setActiveView('discovery');
     }
@@ -598,7 +600,26 @@ export default function App() {
       .join(',');
   }, [displayedItems, newReleases, selectedMovie]);
 
+  const availableGenres = useMemo(() => {
+    const genresSet = new Set<string>();
+    displayedItems.forEach(item => {
+      if (item.genre && Array.isArray(item.genre)) {
+        item.genre.forEach(g => {
+          if (g && g.trim()) {
+            genresSet.add(g.trim());
+          }
+        });
+      }
+    });
+    return Array.from(genresSet).sort();
+  }, [displayedItems]);
+
   const filteredItems = displayedItems.filter(item => {
+    if (selectedGenre) {
+      if (!item.genre || !Array.isArray(item.genre) || !item.genre.includes(selectedGenre)) {
+        return false;
+      }
+    }
     const titleMatch = item.title ? item.title.toLowerCase().includes(searchQuery.toLowerCase()) : false;
     const descMatch = item.description ? item.description.toLowerCase().includes(searchQuery.toLowerCase()) : false;
     const genreMatch = item.genre && Array.isArray(item.genre) ? item.genre.some(g => g.toLowerCase().includes(searchQuery.toLowerCase())) : false;
@@ -850,8 +871,33 @@ export default function App() {
               
               <div className="h-px bg-imm-border w-full"></div>
               
-              <ul className="space-y-4">
-              </ul>
+              {availableGenres.length > 0 && (
+                <div className="space-y-4">
+                  <div className="text-[10px] uppercase tracking-widest text-imm-accent/60 font-bold mb-2">Genres</div>
+                  <ul className="space-y-3 max-h-[30vh] overflow-y-auto no-scrollbar pr-1 normal-case tracking-normal text-sm">
+                    <li
+                      className={`cursor-pointer transition-all flex items-center justify-between py-1 px-2 rounded-lg ${!selectedGenre ? 'text-imm-accent bg-imm-accent/10 font-semibold' : 'text-imm-text/60 hover:text-imm-text hover:bg-white/5'}`}
+                      onClick={() => setSelectedGenre(null)}
+                    >
+                      <span className="truncate">All Genres</span>
+                      <span className="text-[10px] opacity-40">({displayedItems.length})</span>
+                    </li>
+                    {availableGenres.map(genre => {
+                      const count = displayedItems.filter(item => item.genre && Array.isArray(item.genre) && item.genre.includes(genre)).length;
+                      return (
+                        <li
+                          key={genre}
+                          className={`cursor-pointer transition-all flex items-center justify-between py-1 px-2 rounded-lg ${selectedGenre === genre ? 'text-imm-accent bg-imm-accent/10 font-semibold' : 'text-imm-text/60 hover:text-imm-text hover:bg-white/5'}`}
+                          onClick={() => setSelectedGenre(genre)}
+                        >
+                          <span className="truncate">{genre}</span>
+                          <span className="text-[10px] opacity-40">({count})</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
             </nav>
 
             <div className="mt-auto p-4 rounded-2xl bg-imm-card border border-imm-border">
@@ -1083,8 +1129,7 @@ export default function App() {
                   </h2>
                   <ul className="space-y-6">
                     {[
-                      { date: '05/26/2026', title: "Partnered with Games Unite", details: "Officialized a new partnership with Games Unite. Uniting others alike." },
-                      { date: '05/24/2026', title: "Added The Boys, Swapped, Obsession, TMRG & TDWP 2", details: "Added Swapped, Obsession, Star Wars: The Mandalorian & Grogu, and The Devil Wears Prada 2 movies, plus The Boys TV show. Enabled dynamic custom IMDb Ratings." },
+                      { date: '05/24/2026', title: "Massive Content & Partnership Update", details: "Officialized a new partnership with Games Unite (Uniting others alike). Added movies Swapped, Obsession, Star Wars: The Mandalorian & Grogu, The Devil Wears Prada 2, Backrooms, Masters of the Universe, and Scary Movie 6, alongside TV shows The Boys and Among Us." },
                       { date: '05/23/2026', title: "Added Aggretsuko & It: Chapter Two", details: "Added Aggretsuko TV show and It: Chapter Two movie." },
                       { date: '05/22/2026', title: "Added Stranger Things: Tales from '85", details: "Added the Stranger Things: Tales from '85 TV show series." },
                       { date: '05/20/2026', title: 'Added TADC Movie', details: 'Added The Amazing Digital Circus Movie.' },
@@ -1582,9 +1627,9 @@ export default function App() {
                     <div className="mt-12 pt-12 border-t border-white/5">
                       <div className="flex items-center gap-4 text-sm">
                         <span className="bg-imm-accent/10 text-imm-accent px-3 py-1 rounded-full font-bold text-[10px] uppercase tracking-wider">Latest Update</span>
-                        <div className="flex items-center gap-2 text-imm-text/60">
-                          <span className="font-bold">05/26/2026:</span>
-                          <span className="font-medium">Partnered with Games Unite & updated Community Portals</span>
+                        <div className="flex items-center gap-2 text-imm-text/60 text-xs md:text-sm">
+                          <span className="font-bold">05/24/2026:</span>
+                          <span className="font-medium">Massive media additions & Games Unite partnership</span>
                         </div>
                       </div>
                     </div>
@@ -1793,8 +1838,15 @@ export default function App() {
                 {(activeCategory === 'Movies' || activeCategory === 'Anime' || activeCategory === 'TV Shows' || activeCategory === 'Books' || activeCategory === 'Hacks') && (
                   <section className="pb-10">
                     <div className="flex items-center justify-between mb-6">
-                      <h2 className="serif text-2xl font-semibold">
-                        {activeView === 'watchlist' ? 'Saved Titles' : activeView === 'library' ? 'Completed Titles' : activeCategory === 'Anime' ? 'Trending Anime' : activeCategory === 'TV Shows' ? 'Episodic Journeys' : activeCategory === 'Books' ? 'Library' : activeCategory === 'Hacks' ? 'Hacker Resources' : 'Cozy Films'}
+                      <h2 className="serif text-2xl font-semibold flex items-center flex-wrap gap-2">
+                        <span>
+                          {activeView === 'watchlist' ? 'Saved Titles' : activeView === 'library' ? 'Completed Titles' : activeCategory === 'Anime' ? 'Trending Anime' : activeCategory === 'TV Shows' ? 'Episodic Journeys' : activeCategory === 'Books' ? 'Library' : activeCategory === 'Hacks' ? 'Hacker Resources' : 'Cozy Films'}
+                        </span>
+                        {selectedGenre && (
+                          <span className="text-imm-accent bg-imm-accent/10 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                            {selectedGenre}
+                          </span>
+                        )}
                       </h2>
                     </div>
                     
