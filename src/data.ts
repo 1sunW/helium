@@ -5814,6 +5814,32 @@ export const MOVIES: ContentItem[] = [
         type: "movie",
         driveLink: "https://drive.google.com/file/d/1L3z0yIbPpzYP0LoVhmze4_pm63VzzpsW/view"
     },
+    {
+        id: "m421",
+        title: "Ladies First",
+        description: "A compelling story highlighting unique journeys, strength, and remarkable aspirations.",
+        year: "2024",
+        rating: "8.5",
+        duration: "1h 50m",
+        genre: ["Drama", "Biography"],
+        image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTltWhxS0Q93hex-T4Oaeq7McQPXNbLc20dzpN8pTKclykl-ffvTZZWLzJmQINySctiCrgviw&s=10",
+        mood: "Inspiring",
+        type: "movie",
+        driveLink: "https://drive.google.com/file/d/1EkvfNYSX4QWjDROXZGG8TZdJ-_TUeOA-/view?usp=drive_link"
+    },
+    {
+        id: "m422",
+        title: "Toy Story 5",
+        description: "The beloved toys return for another heartfelt adventure filled with fun, friendship, and new imaginative playtime stories.",
+        year: "2026",
+        rating: "8.8",
+        duration: "1h 38m",
+        genre: ["Animation", "Adventure", "Comedy", "Family"],
+        image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQfTb9imlbKYMkd0dYpsLWKLQ0VXntUVNtrffY4CXWr56T837QDezD0drqNdGNbI7jbsG7K&s=10",
+        mood: "Heartwarming",
+        type: "movie",
+        driveLink: "https://drive.google.com/file/d/1HtW3ldOhMlc9BcTlKdNCme0dXiYC4cJ3/view?usp=drive_link"
+    },
 ];
 
 export const TV_SHOWS: ContentItem[] = [

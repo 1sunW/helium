@@ -53,7 +53,7 @@ import airChatHtml from './components/AirChat.html?raw';
 import hydrogenChatHtml from './components/HydrogenChat.html?raw';
 import eaglercraftHtml from './components/Eaglercraft.html?raw';
 import { useAuth } from './components/FirebaseProvider';
-import { loginWithGoogle, logout, auth, db, isAdminUser, addMediaToFirestore, getAllMediaFromFirestore, getUserProfile, updateUserProfile } from './lib/firebase';
+import { loginWithGoogle, logout, auth, db, isAdminUser, addMediaToFirestore, getAllMediaFromFirestore, getUserProfile, updateUserProfile, updateMediaInFirestore } from './lib/firebase';
 import { collection, getDocs, doc, onSnapshot } from 'firebase/firestore';
 import { movieService } from './services/movieService';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -151,7 +151,19 @@ export default function App() {
         setIsFetchingMovies(true);
         try {
             const movies = await movieService.getExternalMovies();
-            setFirestoreMedia(movies);
+            // Automatically migrate Among Us from movie to tv if found
+            const migratedMovies = await Promise.all(movies.map(async (m) => {
+              if (m.title === "Among Us" && m.type === "movie") {
+                try {
+                  await updateMediaInFirestore(m.id, { type: "tv" });
+                  return { ...m, type: "tv" };
+                } catch (err) {
+                  console.error("Failed to migrate Among Us in Firestore:", err);
+                }
+              }
+              return m;
+            }));
+            setFirestoreMedia(migratedMovies);
         } catch (e) {
             console.error(e);
         } finally {
@@ -900,9 +912,27 @@ export default function App() {
               )}
             </nav>
 
-            <div className="mt-auto p-4 rounded-2xl bg-imm-card border border-imm-border">
-              <div className="text-[10px] text-imm-accent uppercase tracking-widest mb-1 font-bold">System Status</div>
-              <div className="text-[10px] text-imm-text/60 tracking-wider">All systems operational</div>
+            <div className="mt-auto space-y-4">
+              <a 
+                href="https://www.effectivecpmnetwork.com/ptmy6p2xu?key=ae59fc84a1711413c3e8446fbff90dc0"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block p-4 rounded-2xl bg-imm-accent/5 hover:bg-imm-accent/10 border border-imm-accent/20 hover:border-imm-accent/40 transition-all group"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-imm-accent uppercase tracking-widest font-bold flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 animate-pulse" /> Support Us
+                  </span>
+                  <ExternalLink className="w-3 h-3 text-imm-accent/50 group-hover:text-imm-accent transition-colors" />
+                </div>
+                <div className="text-xs text-white font-medium">Click to Support our Sponsor</div>
+                <div className="text-[10px] text-imm-text/40 mt-1">Helps keep Helium free & operational!</div>
+              </a>
+
+              <div className="p-4 rounded-2xl bg-imm-card border border-imm-border">
+                <div className="text-[10px] text-imm-accent uppercase tracking-widest mb-1 font-bold">System Status</div>
+                <div className="text-[10px] text-imm-text/60 tracking-wider">All systems operational</div>
+              </div>
             </div>
           </aside>
         )}
@@ -1659,6 +1689,25 @@ export default function App() {
                     <p className="text-xs text-imm-text/40 italic">{item.desc}</p>
                   </div>
                 ))}
+
+                {/* Sponsor / Ad Card */}
+                <a 
+                  href="https://www.effectivecpmnetwork.com/ptmy6p2xu?key=ae59fc84a1711413c3e8446fbff90dc0"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group bg-gradient-to-br from-imm-accent/10 to-transparent border border-imm-accent/30 p-8 rounded-[2rem] hover:border-imm-accent transition-all cursor-pointer flex flex-col justify-between"
+                >
+                  <div>
+                    <Sparkles className="w-8 h-8 text-imm-accent mb-6 animate-pulse" />
+                    <h3 className="serif text-2xl mb-2 text-white flex items-center gap-2">
+                      Sponsor Ad <ExternalLink className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity text-imm-accent" />
+                    </h3>
+                    <p className="text-xs text-imm-text/60 italic">Support Helium's hosting costs and active development by visiting our official sponsor link.</p>
+                  </div>
+                  <div className="mt-6 text-[10px] text-imm-accent uppercase tracking-widest font-bold">
+                    Click to Support &rarr;
+                  </div>
+                </a>
               </motion.div>
             )}
 
@@ -1707,8 +1756,8 @@ export default function App() {
                         Array.from({length: 4}).map((_, i) => (
                            <div key={i} className="aspect-[2/3] bg-white/5 animate-pulse rounded-2xl" />
                         ))
-                      ) : allItems.filter(m => (m as any).isNewRelease).length > 0 ? (
-                        allItems.filter(m => (m as any).isNewRelease).map((item, index) => renderMovieCard(item, index))
+                      ) : allItems.filter(m => m.type === 'movie' && (m as any).isNewRelease).length > 0 ? (
+                        allItems.filter(m => m.type === 'movie' && (m as any).isNewRelease).map((item, index) => renderMovieCard(item, index))
                       ) : (
                         <div className="col-span-full py-10 text-center border border-dashed border-white/10 rounded-2xl opacity-40">
                              <p className="text-sm italic font-serif">No new releases currently spotlighted...</p>
