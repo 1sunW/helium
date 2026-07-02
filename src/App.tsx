@@ -49,6 +49,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import GamesEmbed from './components/GamesEmbed';
+import TermsModal from './components/TermsModal';
 import airChatHtml from './components/AirChat.html?raw';
 import hydrogenChatHtml from './components/HydrogenChat.html?raw';
 import eaglercraftHtml from './components/Eaglercraft.html?raw';
@@ -95,6 +96,7 @@ export default function App() {
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [isTopBarHidden, setIsTopBarHidden] = useState(false);
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
 
   // Firebase Auth & Admin State from Provider
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -912,27 +914,9 @@ export default function App() {
               )}
             </nav>
 
-            <div className="mt-auto space-y-4">
-              <a 
-                href="https://www.effectivecpmnetwork.com/ptmy6p2xu?key=ae59fc84a1711413c3e8446fbff90dc0"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block p-4 rounded-2xl bg-imm-accent/5 hover:bg-imm-accent/10 border border-imm-accent/20 hover:border-imm-accent/40 transition-all group"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] text-imm-accent uppercase tracking-widest font-bold flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 animate-pulse" /> Support Us
-                  </span>
-                  <ExternalLink className="w-3 h-3 text-imm-accent/50 group-hover:text-imm-accent transition-colors" />
-                </div>
-                <div className="text-xs text-white font-medium">Click to Support our Sponsor</div>
-                <div className="text-[10px] text-imm-text/40 mt-1">Helps keep Helium free & operational!</div>
-              </a>
-
-              <div className="p-4 rounded-2xl bg-imm-card border border-imm-border">
-                <div className="text-[10px] text-imm-accent uppercase tracking-widest mb-1 font-bold">System Status</div>
-                <div className="text-[10px] text-imm-text/60 tracking-wider">All systems operational</div>
-              </div>
+            <div className="mt-auto p-4 rounded-2xl bg-imm-card border border-imm-border">
+              <div className="text-[10px] text-imm-accent uppercase tracking-widest mb-1 font-bold">System Status</div>
+              <div className="text-[10px] text-imm-text/60 tracking-wider">All systems operational</div>
             </div>
           </aside>
         )}
@@ -1689,25 +1673,6 @@ export default function App() {
                     <p className="text-xs text-imm-text/40 italic">{item.desc}</p>
                   </div>
                 ))}
-
-                {/* Sponsor / Ad Card */}
-                <a 
-                  href="https://www.effectivecpmnetwork.com/ptmy6p2xu?key=ae59fc84a1711413c3e8446fbff90dc0"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group bg-gradient-to-br from-imm-accent/10 to-transparent border border-imm-accent/30 p-8 rounded-[2rem] hover:border-imm-accent transition-all cursor-pointer flex flex-col justify-between"
-                >
-                  <div>
-                    <Sparkles className="w-8 h-8 text-imm-accent mb-6 animate-pulse" />
-                    <h3 className="serif text-2xl mb-2 text-white flex items-center gap-2">
-                      Sponsor Ad <ExternalLink className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity text-imm-accent" />
-                    </h3>
-                    <p className="text-xs text-imm-text/60 italic">Support Helium's hosting costs and active development by visiting our official sponsor link.</p>
-                  </div>
-                  <div className="mt-6 text-[10px] text-imm-accent uppercase tracking-widest font-bold">
-                    Click to Support &rarr;
-                  </div>
-                </a>
               </motion.div>
             )}
 
@@ -2285,6 +2250,23 @@ export default function App() {
                 <p className="text-imm-text/40 max-w-sm font-light">We are curating the finest, most immersive selections for this category. Stay centered.</p>
               </motion.div>
             )}
+
+            {/* Terms of Service Footer - shown at bottom of each page except Games */}
+            {activeCategory !== 'Games' && (
+              <footer className="mt-auto pt-12 pb-6 border-t border-imm-border/30 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-imm-text/40 w-full max-w-7xl mx-auto">
+                <div className="flex items-center gap-1.5 font-light">
+                  <span>&copy; {new Date().getFullYear()} Helium. All rights reserved.</span>
+                </div>
+                <div className="flex items-center gap-6">
+                  <button 
+                    onClick={() => setIsTermsOpen(true)}
+                    className="hover:text-imm-accent transition-colors underline decoration-imm-accent/20 hover:decoration-imm-accent/50 underline-offset-4 cursor-pointer font-medium"
+                  >
+                    Terms of Service
+                  </button>
+                </div>
+              </footer>
+            )}
           </div>
         </main>
       </div>
@@ -2564,6 +2546,13 @@ export default function App() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Terms of Service Modal */}
+      <AnimatePresence>
+        {isTermsOpen && (
+          <TermsModal isOpen={isTermsOpen} onClose={() => setIsTermsOpen(false)} />
         )}
       </AnimatePresence>
 
