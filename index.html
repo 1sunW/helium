@@ -86,24 +86,7 @@
         translateScript.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
         document.body.appendChild(translateScript);
 
-        // Initialize Widgetbot Crate dynamically
-        const crateScript = document.createElement('script');
-        crateScript.type = 'text/javascript';
-        crateScript.async = true;
-        crateScript.src = 'https://cdn.jsdelivr.net/npm/@widgetbot/crate@3';
-        crateScript.onload = function() {
-          if (typeof Crate !== "undefined" && document.body) {
-            try {
-              new Crate({
-                server: '1469843371177803869',
-                channel: '1498469730833403945'
-              });
-            } catch (e) {
-              console.warn("Crate initialization bypassed safely:", e);
-            }
-          }
-        };
-        document.body.appendChild(crateScript);
+
       }
 
       if (document.readyState === 'complete') {
