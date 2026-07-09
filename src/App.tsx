@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { MOVIES, ANIME_DATA, TV_SHOWS, PROXY_GROUPS, BOOKS, MANGA, WINDOWS_APPS, GIMKIT_HACKS, PARTNERS, type ContentItem, type ProxyGroup, type Partner } from './data';
 import { 
@@ -11,6 +12,7 @@ import {
   Heart, 
   Star,
   Clock,
+  ChevronLeft,
   ChevronRight,
   Sparkles,
   Gamepad2,
@@ -46,7 +48,8 @@ import {
   LogIn,
   Upload,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 import GamesEmbed from './components/GamesEmbed';
 import TermsModal from './components/TermsModal';
@@ -97,6 +100,16 @@ export default function App() {
   const [isTopBarHidden, setIsTopBarHidden] = useState(false);
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isMobileMoreExpanded, setIsMobileMoreExpanded] = useState(() => ['Books', 'Hacks', 'Extra'].includes(activeCategory));
+
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
 
   // Firebase Auth & Admin State from Provider
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -275,10 +288,13 @@ export default function App() {
     };
   }, [user]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSubSidebarCollapsed, setIsSubSidebarCollapsed] = useState(false);
   const [isSettingsFullscreen, setIsSettingsFullscreen] = useState(false);
   const [settingsFullscreenClickCount, setSettingsFullscreenClickCount] = useState(0);
   const [settingsTab, setSettingsTab] = useState<'theme' | 'cloak' | 'language'>('theme');
-  const [currentTheme, setCurrentTheme] = useState('Original Helium');
+  const [currentTheme, setCurrentTheme] = useState(() => {
+    return localStorage.getItem('helium_theme') || 'Original Helium';
+  });
   
   const [cloakSelection, setCloakSelection] = useState('Google');
   const [customCloakName, setCustomCloakName] = useState('My Custom Tab');
@@ -293,6 +309,39 @@ export default function App() {
   const [timeZone, setTimeZone] = useState(() => {
     return localStorage.getItem('helium_timezone') || 'Local';
   });
+
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('helium_search_history');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const addToSearchHistory = (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    setSearchHistory(prev => {
+      const filtered = prev.filter(q => q.toLowerCase() !== trimmed.toLowerCase());
+      const updated = [trimmed, ...filtered].slice(0, 5);
+      localStorage.setItem('helium_search_history', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const removeFromSearchHistory = (query: string) => {
+    setSearchHistory(prev => {
+      const updated = prev.filter(q => q.toLowerCase() !== query.toLowerCase());
+      localStorage.setItem('helium_search_history', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const clearSearchHistory = () => {
+    setSearchHistory([]);
+    localStorage.removeItem('helium_search_history');
+  };
   
   useEffect(() => {
     localStorage.setItem('helium_military_time', useMilitaryTime.toString());
@@ -301,6 +350,12 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('helium_timezone', timeZone);
   }, [timeZone]);
+
+  useEffect(() => {
+    if (isSettingsOpen) {
+      setIsSubSidebarCollapsed(true);
+    }
+  }, [isSettingsOpen]);
   
   const [timeStr, setTimeStr] = useState<string>('');
   const [batteryLevel, setBatteryLevel] = useState<number | null>(null);
@@ -341,7 +396,7 @@ export default function App() {
   useEffect(() => {
     // Basic theme injection targeting variables defined in Tailwind theme
     if (currentTheme === 'Light') {
-      document.documentElement.setAttribute('data-theme', 'light'); // Not defined in css, will just fallback or we can use default
+      document.documentElement.setAttribute('data-theme', 'light');
     } else if (currentTheme === 'Ocean') {
       document.documentElement.setAttribute('data-theme', 'ocean');
     } else if (currentTheme === 'Matrix') {
@@ -355,6 +410,7 @@ export default function App() {
     } else {
       document.documentElement.removeAttribute('data-theme');
     }
+    localStorage.setItem('helium_theme', currentTheme);
   }, [currentTheme]);
 
   const CLOAK_PRESETS = [
@@ -518,6 +574,7 @@ export default function App() {
   const handleCategorySelect = (category: CategoryType) => {
     setActiveCategory(category);
     setSelectedGenre(null);
+    setIsSubSidebarCollapsed(false);
     if ((activeView === 'library' || activeView === 'watchlist') && category !== 'Movies' && category !== 'Anime' && category !== 'TV Shows' && category !== 'Books' && category !== 'Hacks') {
       setActiveView('discovery');
     }
@@ -641,6 +698,26 @@ export default function App() {
   });
 
   const categories: CategoryType[] = ['Home', 'Movies', 'Games', 'Anime', 'TV Shows', 'Proxies', 'Music', 'Books', 'Hacks', 'Extra'];
+
+  const stars = useMemo(() => {
+    return Array.from({ length: 120 }).map((_, i) => ({
+      id: i,
+      top: `${Math.random() * 100}%`,
+      left: `${Math.random() * 100}%`,
+      size: Math.random() < 0.85 ? '1px' : '2px',
+      opacity: Math.random() * 0.7 + 0.3,
+      animationDuration: `${Math.random() * 4 + 2}s`,
+    }));
+  }, []);
+
+  const homeSearchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    return allItems.filter(item => {
+      const titleMatch = item.title ? item.title.toLowerCase().includes(searchQuery.toLowerCase()) : false;
+      const descMatch = item.description ? item.description.toLowerCase().includes(searchQuery.toLowerCase()) : false;
+      return titleMatch || descMatch;
+    });
+  }, [searchQuery, allItems]);
 
   useEffect(() => {
     try {
@@ -818,51 +895,380 @@ export default function App() {
         {[item.duration, item.year].filter(v => v && v !== 'N/A').join(' • ')}
       </div>
     </motion.div>
-  );
-
-  return (
-    <div className="flex flex-col h-screen w-screen box-border overflow-hidden selection:bg-imm-accent/30 bg-imm-bg relative">
-      <div className="atmosphere" />
-      {/* Top Category Bar */}
-      {!isTopBarHidden && (
-      <div className={`bg-imm-sidebar border-b border-imm-border shrink-0 flex items-center px-6 overflow-x-auto no-scrollbar py-3 gap-8 z-50 transition-opacity duration-300 ${selectedMovie || activeMethod || activeExtra ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-        <div className="mr-6 shrink-0">
-          <img src="https://raw.githubusercontent.com/1sunW/ICONS-FOR-LINKS/refs/heads/main/Helium-Logo.png" alt="Helium" className="h-12 w-auto" />
-        </div>
-        <div className="flex items-center gap-6">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => handleCategorySelect(cat)}
-              className={`transition-all px-1 py-1 border-b-2 flex items-center justify-center ${activeCategory === cat ? 'text-imm-accent border-imm-accent' : 'text-imm-text/40 border-transparent hover:text-imm-text/80'}`}
-              title={cat}
-            >
-              {cat === 'Home' && <HomeIcon className="w-5 h-5 mx-2 my-1" />}
-              {cat === 'Movies' && <Film className="w-5 h-5 mx-2 my-1" />}
-              {cat === 'Games' && <Gamepad2 className="w-5 h-5 mx-2 my-1" />}
-              {cat === 'Anime' && <Sparkles className="w-5 h-5 mx-2 my-1" />}
-              {cat === 'TV Shows' && <Tv className="w-5 h-5 mx-2 my-1" />}
-              {cat === 'Proxies' && <Globe className="w-5 h-5 mx-2 my-1" />}
-              {cat === 'Music' && <MusicIcon className="w-5 h-5 mx-2 my-1" />}
-              {cat === 'Books' && <BookOpen className="w-5 h-5 mx-2 my-1" />}
-              {cat === 'Hacks' && <Terminal className="w-5 h-5 mx-2 my-1" />}
-              {cat === 'Extra' && <Plus className="w-5 h-5 mx-2 my-1" />}
-            </button>
-          ))}
-        </div>
+  );  return (
+    <div className="flex flex-col md:flex-row h-screen w-screen box-border overflow-hidden selection:bg-imm-accent/20 bg-imm-bg relative text-imm-text">
+      {/* Helium Starfield Background */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-imm-bg">
+        <div className="atmosphere" />
+        {stars.map(star => (
+          <div
+            key={star.id}
+            className="absolute bg-white rounded-full animate-pulse"
+            style={{
+              top: star.top,
+              left: star.left,
+              width: star.size,
+              height: star.size,
+              opacity: star.opacity,
+              animationDuration: star.animationDuration,
+            }}
+          />
+        ))}
       </div>
-      )}
 
-      <div className="flex flex-1 overflow-hidden relative">
-        {/* Sidebar Navigation (Context Sensitive) */}
-        {(activeCategory === 'Movies' || activeCategory === 'Anime' || activeCategory === 'TV Shows' || activeCategory === 'Books' || activeCategory === 'Hacks') && (
-          <aside className="hidden lg:flex w-64 bg-imm-sidebar border-r border-imm-border flex-col p-8 z-20">
-            <div className="flex items-center gap-3 mb-10">
-              <span className="text-[10px] uppercase tracking-widest text-imm-accent/60 font-bold">Navigation</span>
+      {/* Persistent Desktop Left Sidebar (Helium Style) */}
+      <aside className="hidden md:flex flex-col items-center justify-between py-6 w-[76px] bg-imm-sidebar border-r border-imm-border shrink-0 z-50">
+        <div className="flex flex-col items-center gap-6 w-full">
+          {/* Logo Icon / Launcher */}
+          <div 
+            onClick={() => handleCategorySelect('Home')}
+            className="w-11 h-11 rounded-xl bg-[#0d0d0d] flex items-center justify-center border border-imm-accent/20 shadow-neon-purple cursor-pointer hover:bg-imm-accent/10 transition-all hover:scale-105"
+          >
+            <img 
+              src="https://raw.githubusercontent.com/1sunW/ICONS-FOR-LINKS/refs/heads/main/Helium-Logo.png" 
+              alt="Helium" 
+              className="h-7 w-7 object-contain"
+            />
+          </div>
+          
+          {/* Navigation Icons */}
+          <div className="flex flex-col gap-2.5 w-full px-2">
+            {/* Home Button */}
+            <button
+              onClick={() => handleCategorySelect('Home')}
+              className={`relative group w-12 h-12 rounded-xl flex items-center justify-center mx-auto transition-all ${
+                activeCategory === 'Home' 
+                  ? 'bg-imm-accent/20 text-imm-accent border border-imm-accent/40 shadow-neon-purple' 
+                  : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
+              }`}
+            >
+              <HomeIcon className="w-5 h-5" />
+              <div className="absolute left-[64px] scale-0 group-hover:scale-100 transition-transform duration-150 origin-left bg-zinc-900 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg shadow-xl border border-zinc-800 z-50 pointer-events-none whitespace-nowrap">
+                Home
+              </div>
+            </button>
+
+            {/* Small Aesthetic Line Divider */}
+            <div className="h-px bg-zinc-800/60 my-1.5 mx-2 shrink-0" />
+
+            {/* Other Navigation Buttons */}
+            {[
+              { cat: 'Games' as const, icon: Gamepad2, label: 'Games' },
+              { cat: 'Movies' as const, icon: Film, label: 'Movies' },
+              { cat: 'TV Shows' as const, icon: Tv, label: 'TV Shows' },
+              { cat: 'Anime' as const, icon: Sparkles, label: 'Anime' },
+              { cat: 'Proxies' as const, icon: Globe, label: 'Proxies' },
+              { cat: 'Music' as const, icon: MusicIcon, label: 'Music' },
+            ].map((item) => {
+              const isActive = activeCategory === item.cat;
+              return (
+                <button
+                  key={item.cat}
+                  onClick={() => handleCategorySelect(item.cat)}
+                  className={`relative group w-12 h-12 rounded-xl flex items-center justify-center mx-auto transition-all ${
+                    isActive 
+                      ? 'bg-imm-accent/20 text-imm-accent border border-imm-accent/40 shadow-neon-purple' 
+                      : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  
+                  {/* Floating Tooltip */}
+                  <div className="absolute left-[64px] scale-0 group-hover:scale-100 transition-transform duration-150 origin-left bg-zinc-900 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg shadow-xl border border-zinc-800 z-50 pointer-events-none whitespace-nowrap">
+                    {item.label}
+                  </div>
+                </button>
+              );
+            })}
+
+            {/* Hamburger "More" Menu Button */}
+            <div className="relative mx-auto w-12 h-12">
+              <button
+                onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                className={`relative group w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                  isMoreMenuOpen || ['Books', 'Hacks', 'Extra'].includes(activeCategory)
+                    ? 'bg-imm-accent/20 text-imm-accent border border-imm-accent/40 shadow-neon-purple' 
+                    : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
+                }`}
+              >
+                <Menu className="w-5 h-5" />
+                <div className="absolute left-[64px] scale-0 group-hover:scale-100 transition-transform duration-150 origin-left bg-zinc-900 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg shadow-xl border border-zinc-800 z-50 pointer-events-none whitespace-nowrap">
+                  More Categories
+                </div>
+              </button>
+
+              {/* Popover / Dropdown Menu for Books, Hacks, Extra */}
+              <AnimatePresence>
+                {isMoreMenuOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40 bg-transparent" 
+                      onClick={() => setIsMoreMenuOpen(false)}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, x: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, x: 0, scale: 1 }}
+                      exit={{ opacity: 0, x: -10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute left-[64px] top-0 z-50 w-48 bg-[#0d0d0d] border border-zinc-800 rounded-xl shadow-2xl p-2 flex flex-col gap-1"
+                    >
+                      {[
+                        { cat: 'Books' as const, icon: BookOpen, label: 'Books' },
+                        { cat: 'Hacks' as const, icon: Terminal, label: 'Hacks' },
+                        { cat: 'Extra' as const, icon: Plus, label: 'Extra' },
+                      ].map((item) => {
+                        const isActive = activeCategory === item.cat;
+                        return (
+                          <button
+                            key={item.cat}
+                            onClick={() => {
+                              handleCategorySelect(item.cat);
+                              setIsMoreMenuOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-left transition-all text-xs font-medium ${
+                              isActive 
+                                ? 'bg-imm-accent/20 text-imm-accent border border-imm-accent/30' 
+                                : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
+                            }`}
+                          >
+                            <item.icon className="w-4 h-4" />
+                            <span>{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Utility Icons */}
+        <div className="flex flex-col gap-3 w-full px-2 items-center">
+          {/* User Profile / Sync */}
+          <button
+            onClick={() => setIsPasswordModalOpen(true)}
+            className={`relative group w-12 h-12 rounded-xl flex items-center justify-center transition-all border border-transparent ${
+              user 
+                ? 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20' 
+                : 'text-zinc-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            {user ? (
+              <div className="w-5 h-5 rounded-full bg-green-500 text-black flex items-center justify-center text-[10px] font-bold">
+                {user.email ? user.email.slice(0, 1).toUpperCase() : 'U'}
+              </div>
+            ) : (
+              <Shield className="w-5 h-5" />
+            )}
+            <div className="absolute left-[64px] scale-0 group-hover:scale-100 transition-transform duration-150 origin-left bg-zinc-900 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg shadow-xl border border-zinc-800 z-50 pointer-events-none whitespace-nowrap">
+              {user ? 'Account Synced' : 'Cloud Sync'}
+            </div>
+          </button>
+
+          {/* Settings */}
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="relative group w-12 h-12 rounded-xl flex items-center justify-center transition-all text-zinc-400 hover:text-white hover:bg-white/5"
+          >
+            <Settings className="w-5 h-5" />
+            <div className="absolute left-[64px] scale-0 group-hover:scale-100 transition-transform duration-150 origin-left bg-zinc-900 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg shadow-xl border border-zinc-800 z-50 pointer-events-none whitespace-nowrap">
+              Settings
+            </div>
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile Top Navigation Header */}
+      <header className="flex md:hidden items-center justify-between px-4 py-3 bg-imm-sidebar border-b border-imm-border shrink-0 z-50 w-full">
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleCategorySelect('Home')}>
+          <div className="w-8 h-8 rounded-lg bg-[#0d0d0d] flex items-center justify-center border border-imm-accent/20 shadow-neon-purple overflow-hidden">
+            <img 
+              src="https://raw.githubusercontent.com/1sunW/ICONS-FOR-LINKS/refs/heads/main/Helium-Logo.png" 
+              alt="Helium" 
+              className="h-5 w-5 object-contain"
+            />
+          </div>
+          <span className="font-serif italic font-bold tracking-wide text-imm-text">Helium</span>
+        </div>
+        <button
+          onClick={() => setIsMenuOpen(true)}
+          className="p-2 text-zinc-400 hover:text-imm-text transition-colors"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+      </header>
+
+      {/* Mobile Menu Drawer */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <div className="fixed inset-0 z-[1000] flex md:hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMenuOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="relative w-72 max-w-[80vw] h-full bg-imm-sidebar border-r border-imm-border p-6 flex flex-col justify-between"
+            >
+              <div className="flex flex-col gap-6">
+                <div className="flex justify-between items-center pb-4 border-b border-imm-border">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-[#0d0d0d] flex items-center justify-center border border-imm-accent/20 shadow-neon-purple overflow-hidden">
+                      <img 
+                        src="https://raw.githubusercontent.com/1sunW/ICONS-FOR-LINKS/refs/heads/main/Helium-Logo.png" 
+                        alt="Helium" 
+                        className="h-5 w-5 object-contain"
+                      />
+                    </div>
+                    <span className="font-serif italic font-bold tracking-wide text-imm-text">Helium</span>
+                  </div>
+                  <button
+                    onClick={() => setIsMenuOpen(false)}
+                    className="p-1.5 text-zinc-400 hover:text-imm-text"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <nav className="flex flex-col gap-1 overflow-y-auto max-h-[60vh] no-scrollbar">
+                  {[
+                    { cat: 'Home' as const, icon: HomeIcon, label: 'Home' },
+                    { cat: 'Games' as const, icon: Gamepad2, label: 'Games' },
+                    { cat: 'Movies' as const, icon: Film, label: 'Movies' },
+                    { cat: 'TV Shows' as const, icon: Tv, label: 'TV Shows' },
+                    { cat: 'Anime' as const, icon: Sparkles, label: 'Anime' },
+                    { cat: 'Proxies' as const, icon: Globe, label: 'Proxies' },
+                    { cat: 'Music' as const, icon: MusicIcon, label: 'Music' },
+                  ].map((item) => {
+                    const isActive = activeCategory === item.cat;
+                    return (
+                      <button
+                        key={item.cat}
+                        onClick={() => {
+                          handleCategorySelect(item.cat);
+                          setIsMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all text-sm font-medium ${
+                          isActive 
+                            ? 'bg-imm-accent/20 text-imm-accent border border-imm-accent/40 shadow-neon-purple' 
+                            : 'text-zinc-400 hover:text-imm-text'
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4" />
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+
+                  {/* Mobile Collapsible More categories */}
+                  <div className="mt-2 border-t border-imm-border pt-2">
+                    <button
+                      onClick={() => setIsMobileMoreExpanded(!isMobileMoreExpanded)}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all text-sm font-medium ${
+                        ['Books', 'Hacks', 'Extra'].includes(activeCategory)
+                          ? 'bg-imm-accent/10 text-imm-accent'
+                          : 'text-zinc-400 hover:text-imm-text'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Menu className="w-4 h-4" />
+                        <span>More</span>
+                      </div>
+                      <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${isMobileMoreExpanded ? 'rotate-90' : ''}`} />
+                    </button>
+
+                    <AnimatePresence>
+                      {isMobileMoreExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden pl-4 flex flex-col gap-1 mt-1"
+                        >
+                          {[
+                            { cat: 'Books' as const, icon: BookOpen, label: 'Books' },
+                            { cat: 'Hacks' as const, icon: Terminal, label: 'Hacks' },
+                            { cat: 'Extra' as const, icon: Plus, label: 'Extra' },
+                          ].map((subItem) => {
+                            const isSubActive = activeCategory === subItem.cat;
+                            return (
+                              <button
+                                key={subItem.cat}
+                                onClick={() => {
+                                  handleCategorySelect(subItem.cat);
+                                  setIsMenuOpen(false);
+                                }}
+                                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-left transition-all text-sm font-medium ${
+                                  isSubActive 
+                                    ? 'text-imm-accent font-bold bg-imm-accent/10' 
+                                    : 'text-zinc-500 hover:text-zinc-300'
+                                }`}
+                              >
+                                <subItem.icon className="w-4 h-4" />
+                                <span>{subItem.label}</span>
+                              </button>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </nav>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-4 border-t border-[#151515]">
+                <button
+                  onClick={() => {
+                    setIsPasswordModalOpen(true);
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-zinc-400 hover:text-white transition-all text-sm font-medium"
+                >
+                  <Shield className="w-4 h-4" />
+                  <span>{user ? 'Account Synced' : 'Cloud Sync'}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsSettingsOpen(true);
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-zinc-400 hover:text-white transition-all text-sm font-medium"
+                >
+                  <Settings className="w-4 h-4" />
+                  <span>Settings</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <div className="flex flex-1 overflow-hidden relative w-full h-full">
+        {/* Sidebar Navigation (Context Sensitive Sub-Sidebar) */}
+        {(activeCategory === 'Movies' || activeCategory === 'Anime' || activeCategory === 'TV Shows' || activeCategory === 'Books' || activeCategory === 'Hacks') && !isSubSidebarCollapsed && (
+          <aside className="hidden lg:flex w-64 bg-imm-sidebar border-r border-imm-border flex-col p-8 z-20 shrink-0">
+            <div className="flex items-center justify-between gap-3 mb-10">
+              <span className="text-[10px] uppercase tracking-widest text-imm-accent/80 font-bold">Navigation</span>
+              <button
+                onClick={() => setIsSubSidebarCollapsed(true)}
+                className="p-1 rounded bg-[#101010] border border-zinc-800 text-zinc-400 hover:text-imm-text hover:bg-zinc-800 transition-colors cursor-pointer"
+                title="Collapse Sidebar"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
             </div>
             
-            <nav className="flex-1 space-y-8 text-xs uppercase tracking-[0.2em] text-imm-text/60">
-              <ul className="space-y-4">
+            <nav className="flex-1 space-y-8 text-xs uppercase tracking-[0.2em] text-zinc-400">
+              <ul className="space-y-4 font-medium">
                 <li 
                   className={`cursor-pointer transition-colors flex items-center gap-3 ${activeView === 'discovery' ? 'text-imm-accent font-semibold' : 'hover:text-imm-text'}`}
                   onClick={() => setActiveView('discovery')}
@@ -887,10 +1293,10 @@ export default function App() {
               
               {availableGenres.length > 0 && (
                 <div className="space-y-4">
-                  <div className="text-[10px] uppercase tracking-widest text-imm-accent/60 font-bold mb-2">Genres</div>
+                  <div className="text-[10px] uppercase tracking-widest text-imm-accent/80 font-bold mb-2">Genres</div>
                   <ul className="space-y-3 max-h-[30vh] overflow-y-auto no-scrollbar pr-1 normal-case tracking-normal text-sm">
                     <li
-                      className={`cursor-pointer transition-all flex items-center justify-between py-1 px-2 rounded-lg ${!selectedGenre ? 'text-imm-accent bg-imm-accent/10 font-semibold' : 'text-imm-text/60 hover:text-imm-text hover:bg-white/5'}`}
+                      className={`cursor-pointer transition-all flex items-center justify-between py-1.5 px-2.5 rounded-lg ${!selectedGenre ? 'text-imm-accent bg-imm-accent/10 font-semibold' : 'text-zinc-400 hover:text-imm-text hover:bg-white/5'}`}
                       onClick={() => setSelectedGenre(null)}
                     >
                       <span className="truncate">All Genres</span>
@@ -901,7 +1307,7 @@ export default function App() {
                       return (
                         <li
                           key={genre}
-                          className={`cursor-pointer transition-all flex items-center justify-between py-1 px-2 rounded-lg ${selectedGenre === genre ? 'text-imm-accent bg-imm-accent/10 font-semibold' : 'text-imm-text/60 hover:text-imm-text hover:bg-white/5'}`}
+                          className={`cursor-pointer transition-all flex items-center justify-between py-1.5 px-2.5 rounded-lg ${selectedGenre === genre ? 'text-imm-accent bg-imm-accent/10 font-semibold' : 'text-zinc-400 hover:text-imm-text hover:bg-white/5'}`}
                           onClick={() => setSelectedGenre(genre)}
                         >
                           <span className="truncate">{genre}</span>
@@ -914,16 +1320,40 @@ export default function App() {
               )}
             </nav>
 
-            <div className="mt-auto p-4 rounded-2xl bg-imm-card border border-imm-border">
+            <div className="mt-auto p-4 rounded-2xl bg-zinc-900/50 border border-imm-border">
               <div className="text-[10px] text-imm-accent uppercase tracking-widest mb-1 font-bold">System Status</div>
-              <div className="text-[10px] text-imm-text/60 tracking-wider">All systems operational</div>
+              <div className="text-[10px] text-zinc-500 tracking-wider">All systems operational</div>
             </div>
           </aside>
         )}
 
-        <main className="flex-1 flex flex-col relative overflow-y-auto bg-imm-bg">
-          {/* Amber Glow background effect */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-imm-accent/10 rounded-full blur-[150px] pointer-events-none"></div>
+        <main className="flex-1 flex flex-col relative overflow-y-auto bg-black/40 z-10 no-scrollbar">
+          {/* Collapsible Sub-Sidebar Navigation Handle */}
+          {isSubSidebarCollapsed && (activeCategory === 'Movies' || activeCategory === 'Anime' || activeCategory === 'TV Shows' || activeCategory === 'Books' || activeCategory === 'Hacks') && (
+            <button
+              onClick={() => setIsSubSidebarCollapsed(false)}
+              className="hidden lg:flex fixed left-[76px] top-1/2 -translate-y-1/2 z-30 bg-[#050505]/95 border-y border-r border-[#151515] text-zinc-400 hover:text-white px-2 py-4 rounded-r-xl transition-all shadow-xl flex flex-col items-center gap-1 cursor-pointer group"
+              title="Show Navigation"
+            >
+              <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              <span className="text-[9px] uppercase tracking-widest text-zinc-500 [writing-mode:vertical-lr] font-bold mt-1">Nav</span>
+            </button>
+          )}
+
+          {/* Toast Message Notification Banner */}
+          <AnimatePresence>
+            {toastMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] bg-zinc-900 border border-imm-accent/30 text-white px-6 py-3 rounded-full text-sm font-semibold shadow-2xl flex items-center gap-3"
+              >
+                <div className="w-2 h-2 rounded-full bg-imm-accent animate-ping"></div>
+                {toastMessage}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Air Chat Modal */}
           {isAirChatOpen && (
@@ -938,19 +1368,19 @@ export default function App() {
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
                 onClick={e => e.stopPropagation()}
-                className={`bg-imm-bg border border-imm-border rounded-3xl overflow-hidden shadow-2xl relative ${isAirChatFullscreen ? "!rounded-none !w-screen !h-screen" : "w-[90vw] max-w-4xl h-[80vh] max-h-[700px]"}`}
+                className={`bg-[#050505] border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl relative ${isAirChatFullscreen ? "!rounded-none !w-screen !h-screen" : "w-[90vw] max-w-4xl h-[80vh] max-h-[700px]"}`}
               >
                 <button 
-                  className="absolute top-4 right-4 z-50 bg-imm-sidebar text-imm-text p-2 rounded-full border border-imm-border hover:bg-imm-accent hover:text-black transition-all"
+                  className="absolute top-4 right-4 z-50 bg-zinc-900 text-white p-2 rounded-full border border-zinc-800 hover:bg-imm-accent hover:text-black transition-all"
                   onClick={() => setIsAirChatFullscreen(!isAirChatFullscreen)}
                 >
                   {isAirChatFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                 </button>
-                  <iframe 
-                    srcDoc={airChatHtml}
-                    className="w-full h-full border-none"
-                    title="Air Chat"
-                  />
+                <iframe 
+                  srcDoc={airChatHtml}
+                  className="w-full h-full border-none"
+                  title="Air Chat"
+                />
               </motion.div>
             </motion.div>
           )}
@@ -968,19 +1398,19 @@ export default function App() {
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
                 onClick={e => e.stopPropagation()}
-                className={`bg-imm-bg border border-imm-border rounded-3xl overflow-hidden shadow-2xl relative ${isHydrogenChatFullscreen ? "!rounded-none !w-screen !h-screen" : "w-[90vw] max-w-4xl h-[80vh] max-h-[700px]"}`}
+                className={`bg-[#050505] border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl relative ${isHydrogenChatFullscreen ? "!rounded-none !w-screen !h-screen" : "w-[90vw] max-w-4xl h-[80vh] max-h-[700px]"}`}
               >
                 <button 
-                  className="absolute top-4 right-4 z-50 bg-imm-sidebar text-imm-text p-2 rounded-full border border-imm-border hover:bg-imm-accent hover:text-black transition-all"
+                  className="absolute top-4 right-4 z-50 bg-zinc-900 text-white p-2 rounded-full border border-zinc-800 hover:bg-imm-accent hover:text-black transition-all"
                   onClick={() => setIsHydrogenChatFullscreen(!isHydrogenChatFullscreen)}
                 >
                   {isHydrogenChatFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                 </button>
-                  <iframe 
-                    srcDoc={hydrogenChatHtml}
-                    className="w-full h-full border-none"
-                    title="Hydrogen Chat"
-                  />
+                <iframe 
+                  srcDoc={hydrogenChatHtml}
+                  className="w-full h-full border-none"
+                  title="Hydrogen Chat"
+                />
               </motion.div>
             </motion.div>
           )}
@@ -998,47 +1428,29 @@ export default function App() {
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
                 onClick={e => e.stopPropagation()}
-                className={`bg-imm-bg border border-imm-border rounded-3xl overflow-hidden shadow-2xl relative ${isEaglercraftFullscreen ? "!rounded-none !w-screen !h-screen" : "w-[90vw] max-w-4xl h-[80vh] max-h-[700px]"}`}
+                className={`bg-[#050505] border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl relative ${isEaglercraftFullscreen ? "!rounded-none !w-screen !h-screen" : "w-[90vw] max-w-4xl h-[80vh] max-h-[700px]"}`}
               >
                 <button 
-                  className="absolute top-4 right-4 z-50 bg-imm-sidebar text-imm-text p-2 rounded-full border border-imm-border hover:bg-imm-accent hover:text-black transition-all"
+                  className="absolute top-4 right-4 z-50 bg-zinc-900 text-white p-2 rounded-full border border-zinc-800 hover:bg-imm-accent hover:text-black transition-all"
                   onClick={() => setIsEaglercraftFullscreen(!isEaglercraftFullscreen)}
                 >
                   {isEaglercraftFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                 </button>
-                  <iframe 
-                    srcDoc={eaglercraftHtml}
-                    className="w-full h-full border-none"
-                    title="Eaglercraft"
-                  />
+                <iframe 
+                  srcDoc={eaglercraftHtml}
+                  className="w-full h-full border-none"
+                  title="Eaglercraft"
+                />
               </motion.div>
             </motion.div>
           )}
 
-
-
-          {/* Sub Header */}
-          <div className={`h-12 shrink-0 px-6 lg:px-10 flex items-center justify-between border-b border-imm-border bg-imm-card z-[90] ${selectedMovie || activeMethod || activeExtra ? 'hidden' : ''}`}>
+          {/* Sub Header (Aesthetic system bar next to top bar) */}
+          <div className={`h-12 shrink-0 px-6 lg:px-10 flex items-center justify-between border-b border-imm-border bg-imm-sidebar z-[90] ${selectedMovie || activeMethod || activeExtra ? 'hidden' : ''}`}>
             <div className="flex items-center gap-4 text-xs font-medium">
               <button 
-                onClick={() => setIsTopBarHidden(!isTopBarHidden)}
-                className="flex items-center justify-center w-6 h-6 hover:text-imm-accent transition-colors"
-                title={isTopBarHidden ? "Show Nav" : "Hide Nav"}
-              >
-                {isTopBarHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-              </button>
-              <div className="w-px h-4 bg-imm-border"></div>
-              <button 
-                onClick={() => setIsSettingsOpen(true)}
-                className="flex items-center justify-center w-6 h-6 hover:text-imm-accent transition-colors"
-                title="Settings"
-              >
-                <Settings className="w-4 h-4" />
-              </button>
-              <div className="w-px h-4 bg-imm-border"></div>
-              <button 
                 onClick={() => setIsChangelogOpen(true)}
-                className="flex items-center justify-center w-6 h-6 hover:text-imm-accent transition-colors"
+                className="flex items-center justify-center w-6 h-6 hover:text-imm-accent transition-colors text-zinc-400"
                 title="Updates"
               >
                 <Zap className="w-4 h-4" />
@@ -1048,7 +1460,7 @@ export default function App() {
                 href="https://discord.gg/3KDAKzBDg4"
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-center w-6 h-6 hover:text-[#5865F2] transition-colors"
+                className="flex items-center justify-center w-6 h-6 hover:text-[#5865F2] transition-colors text-zinc-400"
                 title="Join Discord Server"
               >
                 <i className="fa-brands fa-discord text-base"></i>
@@ -1058,7 +1470,7 @@ export default function App() {
                   <div className="w-px h-4 bg-imm-border"></div>
                   <button
                     onClick={() => setIsAdminViewOpen(true)}
-                    className="flex items-center justify-center w-6 h-6 hover:text-imm-accent transition-colors"
+                    className="flex items-center justify-center w-6 h-6 hover:text-imm-accent transition-colors text-zinc-400"
                     title="Admin Dashboard"
                   >
                     <PlusCircle className="w-4 h-4" />
@@ -1066,38 +1478,27 @@ export default function App() {
                   <div className="w-px h-4 bg-imm-border"></div>
                   <button
                     onClick={() => logout()}
-                    className="flex items-center justify-center w-6 h-6 hover:text-red-500 transition-colors"
+                    className="flex items-center justify-center w-6 h-6 hover:text-red-500 transition-colors text-zinc-400"
                     title="Logout"
                   >
                     <LogOut className="w-4 h-4" />
                   </button>
                 </>
               )}
-              {(!isAdmin && !authLoading) && (
-                <button
-                    onClick={() => {
-                        setIsPasswordModalOpen(true);
-                    }}
-                    className={`flex items-center justify-center w-6 h-6 transition-colors ${user ? 'text-green-400' : 'hover:text-imm-accent'}`}
-                    title={user ? "Cloud Sync Active" : "Sign in to Sync"}
-                  >
-                    {user ? <Globe className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
-                  </button>
-              )}
             </div>
             
-            <div className="flex items-center gap-4 text-xs font-medium text-imm-text/70">
+            <div className="flex items-center gap-4 text-xs font-medium text-zinc-500">
               {isNotepadOpen && (
                 <motion.div
-                    drag
-                    dragMomentum={false}
-                    className="fixed bg-imm-sidebar border border-imm-border p-4 rounded-xl z-[3000] w-64 shadow-2xl flex flex-col gap-2"
-                    style={{ top: '100px', left: '100px' }}
+                  drag
+                  dragMomentum={false}
+                  className="fixed bg-[#0d0d0d] border border-[#1a1a1a] p-4 rounded-xl z-[3000] w-64 shadow-2xl flex flex-col gap-2 text-white"
+                  style={{ top: '100px', left: '100px' }}
                 >
-                    <div className="flex justify-between items-center cursor-move text-imm-text/60">
-                        <span className="font-bold text-xs uppercase">Notepad</span>
-                        <button onClick={() => setIsNotepadOpen(false)}><X className="w-4 h-4" /></button>
-                    </div>
+                  <div className="flex justify-between items-center cursor-move text-zinc-400">
+                    <span className="font-bold text-xs uppercase">Notepad</span>
+                    <button onClick={() => setIsNotepadOpen(false)}><X className="w-4 h-4" /></button>
+                  </div>
                     <textarea
                         className="w-full h-32 bg-imm-card border border-imm-border p-2 rounded text-sm text-imm-text"
                         placeholder="Type here..."
@@ -1452,7 +1853,11 @@ export default function App() {
                                 window.location.href = 'https://forms.gle/MwgrQf9WRWMPGuXh8';
                               } else {
                                 setSettingsFullscreenClickCount(newCount);
-                                setIsSettingsFullscreen(!isSettingsFullscreen);
+                                const nextFullscreen = !isSettingsFullscreen;
+                                setIsSettingsFullscreen(nextFullscreen);
+                                if (nextFullscreen) {
+                                  setIsSubSidebarCollapsed(true);
+                                }
                               }
                             }}
                           >
@@ -1470,7 +1875,7 @@ export default function App() {
                          <div>
                             <h3 className="text-xl font-bold mb-6">Select Theme</h3>
                             <div className="grid grid-cols-2 gap-4">
-                               {['Original Helium', 'Ocean', 'Matrix', 'Violet', 'Halloween', 'Chillzone Red'].map(theme => (
+                               {['Original Helium', 'Ocean', 'Matrix', 'Violet', 'Halloween', 'Chillzone Red', 'Light'].map(theme => (
                                  <button 
                                     key={theme}
                                     onClick={() => setCurrentTheme(theme)}
@@ -1619,60 +2024,121 @@ export default function App() {
             
             {activeCategory === 'Home' && (
               <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                initial={{ opacity: 0, y: 15 }} 
+                animate={{ opacity: 1, y: 0 }}
+                className="flex-1 flex flex-col justify-center items-center max-w-4xl mx-auto w-full py-12 px-4 select-none"
               >
-                {/* Welcome Card */}
-                <div className="col-span-full bg-imm-card border border-imm-border p-12 rounded-[2.5rem] relative overflow-hidden glow-amber mb-4">
-                  <div className="relative z-10 max-w-2xl">
-                    <h1 className="serif text-6xl mb-6 text-white italic tracking-tight">Helium Awaits.</h1>
-                    <p className="text-imm-text/70 text-lg font-light leading-relaxed mb-8">
-                      Welcome to Helium, everything for everyone.
-                    </p>
-                    <button 
-                      onClick={() => handleCategorySelect('Movies')}
-                      className="bg-imm-accent text-black px-10 py-4 rounded-full font-bold text-sm hover:bg-imm-accent-hover transition-all"
-                    >
-                      Start Exploring
-                    </button>
-                    
-                    {/* Latest Change display */}
-                    <div className="mt-12 pt-12 border-t border-white/5">
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="bg-imm-accent/10 text-imm-accent px-3 py-1 rounded-full font-bold text-[10px] uppercase tracking-wider">Latest Update</span>
-                        <div className="flex items-center gap-2 text-imm-text/60 text-xs md:text-sm">
-                          <span className="font-bold">05/24/2026:</span>
-                          <span className="font-medium">Massive media additions & Games Unite partnership</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="absolute top-0 right-0 p-12 opacity-10">
-                    <Zap className="w-64 h-64" />
-                  </div>
+                {/* Central Logo */}
+                <div className="text-center mb-10">
+                  <h1 className="text-8xl md:text-9xl font-serif italic tracking-wide text-imm-text drop-shadow-[0_0_35px_var(--accent-glow)] select-none">
+                    Helium
+                  </h1>
                 </div>
 
-                {/* Sub-Category Cards */}
-                {[
-                  { name: 'Movies', icon: Play, count: MOVIES.length, desc: 'Watch amazing films.' },
-                  { name: 'Games', icon: Gamepad2, count: 0, desc: 'Explore different perspectives.' },
-                  { name: 'Anime', icon: Sparkles, count: ANIME_DATA.length, desc: 'Watch your favorite animated films.' },
-                  { name: 'Proxies', icon: Layers, count: 0, desc: 'Surf the web securly.' },
-                  { name: 'Music', icon: MusicIcon, count: 0, desc: 'Listen to your favorite jams.' },
-                  { name: 'TV Shows', icon: Tv, count: TV_SHOWS.length, desc: 'View episodic adventures.' },
-                  { name: 'Extra', icon: Ghost, count: 0, desc: 'Portals to different worlds.' }
-                ].map((item) => (
-                  <div 
-                    key={item.name}
-                    onClick={() => handleCategorySelect(item.name as CategoryType)}
-                    className="group bg-imm-sidebar border border-imm-border p-8 rounded-[2rem] hover:border-imm-accent transition-all cursor-pointer"
-                  >
-                    <item.icon className="w-8 h-8 text-imm-accent mb-6 opacity-60 group-hover:opacity-100 transition-opacity" />
-                    <h3 className="serif text-2xl mb-2 text-white">{item.name}</h3>
-                    <p className="text-xs text-imm-text/40 italic">{item.desc}</p>
+                {/* Centered Large Search Bar */}
+                <div className={`relative w-full max-w-2xl ${searchHistory.length > 0 ? 'mb-6' : 'mb-12'} group`}>
+                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500 group-focus-within:text-imm-accent transition-colors" />
+                  <input
+                    type="text"
+                    placeholder="Search unblocked movies, proxies, games..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        addToSearchHistory(searchQuery);
+                      }
+                    }}
+                    className="w-full bg-imm-sidebar border-2 border-imm-border focus:border-imm-accent/60 rounded-2xl pl-14 pr-12 py-4 text-base focus:outline-none transition-all text-imm-text placeholder:text-zinc-600 shadow-[0_0_25px_rgba(0,0,0,0.15)] focus:shadow-[0_0_30px_var(--accent-glow-dim)]"
+                  />
+                  {searchQuery && (
+                    <button 
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-imm-text"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Search History Tags */}
+                {searchHistory.length > 0 && (
+                  <div className="w-full max-w-2xl mb-12 flex flex-wrap items-center justify-center gap-2">
+                    <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mr-1 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" /> Recent:
+                    </span>
+                    {searchHistory.map((query, idx) => (
+                      <div
+                        key={idx}
+                        className="group flex items-center gap-1.5 bg-imm-sidebar border border-imm-border hover:border-imm-accent/30 rounded-full px-3 py-1 transition-all text-zinc-400 hover:text-imm-text text-xs cursor-pointer select-none"
+                        onClick={() => {
+                          setSearchQuery(query);
+                          addToSearchHistory(query);
+                        }}
+                      >
+                        <span className="truncate max-w-[120px]">{query}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFromSearchHistory(query);
+                          }}
+                          className="text-zinc-600 hover:text-red-400 p-0.5 rounded-full transition-colors"
+                          title="Remove from history"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={clearSearchHistory}
+                      className="text-zinc-600 hover:text-imm-accent p-1.5 rounded-full transition-all hover:scale-105"
+                      title="Clear search history"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                ))}
+                )}
+
+                {/* Search Results */}
+                {searchQuery.trim() ? (
+                  /* Live Search Results on Home Screen */
+                  <div className="w-full max-w-3xl space-y-4">
+                    <div className="flex items-center justify-between text-zinc-500 text-xs uppercase tracking-widest font-mono">
+                      <span>Search Results for "{searchQuery}"</span>
+                      <span>{homeSearchResults.length} found</span>
+                    </div>
+
+                    {homeSearchResults.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[40vh] overflow-y-auto no-scrollbar pr-1">
+                        {homeSearchResults.map((item) => (
+                          <div
+                            key={item.id}
+                            onClick={() => {
+                              addToSearchHistory(searchQuery);
+                              handleWatch(item);
+                            }}
+                            className="flex items-center gap-4 p-4 rounded-xl bg-imm-sidebar border border-imm-border hover:border-imm-accent/40 hover:bg-imm-card transition-all cursor-pointer group"
+                          >
+                            <div className="w-10 h-10 rounded-lg bg-imm-accent/10 flex items-center justify-center shrink-0 text-imm-accent border border-imm-accent/20">
+                              {item.type === 'movie' && <Film className="w-5 h-5" />}
+                              {item.type === 'tv' && <Tv className="w-5 h-5" />}
+                              {item.type === 'anime' && <Sparkles className="w-5 h-5" />}
+                              {item.type === 'hack' && <Terminal className="w-5 h-5" />}
+                              {(!item.type || !['movie', 'tv', 'anime', 'hack'].includes(item.type)) && <Layers className="w-5 h-5" />}
+                            </div>
+                            <div className="flex flex-col min-w-0 text-left">
+                              <span className="text-sm font-semibold text-zinc-200 group-hover:text-imm-text truncate">{item.title}</span>
+                              <span className="text-[10px] text-zinc-500 uppercase tracking-widest mt-0.5">{item.type || 'Media'}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 border border-dashed border-zinc-800 rounded-2xl">
+                        <p className="text-sm text-zinc-500 italic">No exact matches found. Try exploring standard categories!</p>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </motion.div>
             )}
 

@@ -16,57 +16,87 @@
 }
 
 [data-theme="ocean"] {
-  --accent: #008CFF;
-  --accent-glow: rgba(0, 140, 255, 0.3);
-  --accent-glow-dim: rgba(0, 140, 255, 0.1);
-  --bg: #000000;
-  --surface: #050b14;
-  --surface-hover: #0a192f;
-  --surface-active: #112240;
+  --accent: #00f0ff;
+  --accent-glow: rgba(0, 240, 255, 0.3);
+  --accent-glow-dim: rgba(0, 240, 255, 0.1);
+  --bg: #020617;
+  --surface: #071530;
+  --surface-hover: #0c234a;
+  --surface-active: #123263;
+  --border: #1a3c73;
+  --text-primary: #f0fdfa;
+  --text-secondary: #38bdf8;
+  --text-muted: #0284c7;
 }
 
 [data-theme="matrix"] {
-  --accent: #00ff9f;
-  --accent-glow: rgba(0, 255, 159, 0.3);
-  --accent-glow-dim: rgba(0, 255, 159, 0.1);
-  --bg: #000000;
-  --surface: #05100a;
-  --surface-hover: #0a1f14;
-  --surface-active: #143322;
+  --accent: #00ff66;
+  --accent-glow: rgba(0, 255, 102, 0.3);
+  --accent-glow-dim: rgba(0, 255, 102, 0.1);
+  --bg: #010502;
+  --surface: #031408;
+  --surface-hover: #072410;
+  --surface-active: #0d3c1a;
+  --border: #124f22;
+  --text-primary: #f0fdf4;
+  --text-secondary: #4ade80;
+  --text-muted: #16a34a;
 }
 
 [data-theme="violet"] {
-  --accent: #bd93f9;
-  --accent-glow: rgba(189, 147, 249, 0.3);
-  --accent-glow-dim: rgba(189, 147, 249, 0.1);
-  --bg: #000000;
-  --surface: #0a0514;
-  --surface-hover: #140a29;
-  --surface-active: #221144;
+  --accent: #d946ef;
+  --accent-glow: rgba(217, 70, 239, 0.3);
+  --accent-glow-dim: rgba(217, 70, 239, 0.1);
+  --bg: #06010f;
+  --surface: #120324;
+  --surface-hover: #1d0738;
+  --surface-active: #2c0d52;
+  --border: #3d146e;
+  --text-primary: #fdf4ff;
+  --text-secondary: #f0abfc;
+  --text-muted: #c084fc;
 }
 
 [data-theme="halloween"] {
-  --accent: #ff7518;
-  --accent-glow: rgba(255, 117, 24, 0.3);
-  --accent-glow-dim: rgba(255, 117, 24, 0.1);
-  --bg: #0a0a0a;
-  --surface: #1a0f00;
-  --surface-hover: #2a1a00;
-  --surface-active: #3a2500;
+  --accent: #ff6a00;
+  --accent-glow: rgba(255, 106, 0, 0.3);
+  --accent-glow-dim: rgba(255, 106, 0, 0.1);
+  --bg: #080402;
+  --surface: #140b04;
+  --surface-hover: #211207;
+  --surface-active: #331d0d;
+  --border: #472813;
+  --text-primary: #fffaf0;
+  --text-secondary: #fdba74;
+  --text-muted: #ea580c;
 }
 
 [data-theme="chillzonered"] {
-  --accent: #ff0000;
-  --accent-glow: rgba(255, 0, 0, 0.3);
-  --accent-glow-dim: rgba(255, 0, 0, 0.1);
-  --bg: #000000;
-  --surface: #0a0a0a;
-  --surface-hover: #1c1c1f;
-  --surface-active: #27272a;
-  --border: rgba(255, 255, 255, 0.1);
-  --text-primary: #ffffff;
-  --text-secondary: #52525b;
-  --text-muted: #a1a1aa;
+  --accent: #ff2e56;
+  --accent-glow: rgba(255, 46, 86, 0.3);
+  --accent-glow-dim: rgba(255, 46, 86, 0.1);
+  --bg: #050002;
+  --surface: #120207;
+  --surface-hover: #210510;
+  --surface-active: #300918;
+  --border: #450e24;
+  --text-primary: #fff5f7;
+  --text-secondary: #fda4af;
+  --text-muted: #f43f5e;
+}
+
+[data-theme="light"] {
+  --accent: #7c3aed;
+  --accent-glow: rgba(124, 58, 237, 0.15);
+  --accent-glow-dim: rgba(124, 58, 237, 0.05);
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-hover: #f1f5f9;
+  --surface-active: #e2e8f0;
+  --border: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
 }
 
 @theme {
@@ -187,9 +217,35 @@
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(circle at 50% 30%, var(--accent-glow-dim) 0%, transparent 60%),
-    radial-gradient(circle at 10% 80%, var(--accent-glow) 0%, transparent 50%);
+    radial-gradient(circle at 50% 30%, var(--accent-glow) 0%, transparent 60%),
+    radial-gradient(circle at 10% 80%, var(--accent-glow-dim) 0%, transparent 50%);
   filter: blur(80px);
   opacity: 0.4;
   pointer-events: none;
 }
+
+.text-neon-purple {
+  text-shadow: 0 0 12px var(--accent), 0 0 25px var(--accent-glow), 0 0 40px var(--accent-glow-dim);
+}
+
+.shadow-neon-purple {
+  box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.shadow-neon-green {
+  box-shadow: 0 0 15px var(--accent-glow-dim);
+}
+
+.shadow-neon-purple-hover:hover {
+  box-shadow: 0 0 25px var(--accent);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
