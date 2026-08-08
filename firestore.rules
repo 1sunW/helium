@@ -81,9 +81,13 @@ service cloud.firestore {
 
     // Admins Collection (Whitelist)
     match /admins/{adminUid} {
-      allow read: if isSignedIn() && (request.auth.uid == adminUid || isAdmin());
-      // Only existing admins can add new admins
+      allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // VIP Codes Collection
+    match /vip_codes/{codeId} {
+      allow read, write: if true;
     }
 
     // Users Collection

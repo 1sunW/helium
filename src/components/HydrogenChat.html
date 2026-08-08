@@ -27,25 +27,15 @@ function applyTheme(theme) {
   root.setProperty('--shadow-color', hexToRGBA(theme.glow || theme.accent, 0.4));
 }
 (function(){
-  const ACTIVE_THEME_KEY = 'zgc_theme_v2_active';
   try {
     let data = localStorage.getItem(ACTIVE_THEME_KEY);
     if (data && typeof data === 'string') { 
       const trimmed = data.trim();
       if (trimmed && trimmed !== "undefined" && trimmed !== "null" && trimmed !== "[object Object]" && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          if (parsed && typeof parsed === 'object') {
-            applyTheme(parsed); 
-          }
-        } catch(innerError) {
-          console.warn("HydrogenChat: Inner JSON.parse failed:", innerError);
-        }
+        applyTheme(JSON.parse(trimmed)); 
       }
     }
-  } catch(e) {
-    console.warn("Failed to parse zgc_theme:", e);
-  }
+  } catch(e){console.log(e);}
 })();
 </script>
 
@@ -81,7 +71,7 @@ body {
 }
 
 .app {
-  flex: 1; display: grid; grid-template-columns: 300px 1fr;
+  flex: 1; display: grid; grid-template-columns: 320px 1fr;
   max-width: 1200px; width: 95%; margin: 20px auto;
   background: rgba(255,255,255,0.02); border-radius: 12px;
   backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05);
@@ -90,7 +80,7 @@ body {
 
 .left { 
   padding:20px; border-right:1px solid rgba(255,255,255,0.05); 
-  display:flex; flex-direction:column; gap:10px; 
+  display:flex; flex-direction:column; gap:15px; 
 }
 .main { display:flex; flex-direction:column; height:100%; overflow:hidden; }
 
@@ -130,17 +120,26 @@ body {
   padding: 20px; border-top: 1px solid rgba(255,255,255,0.05); 
   display: flex; gap: 10px; 
 }
-input { 
+input, select { 
   background: rgba(255,255,255,0.05); 
   border: 1px solid rgba(255,255,255,0.1); 
   color: #fff; padding: 10px; border-radius: 8px; 
   outline: none; transition: all 0.2s;
 }
-input:focus { 
+input:focus, select:focus { 
   border-color: var(--accent-color); 
   box-shadow: 0 0 0 2px rgba(170, 212, 255, 0.2);
 }
 input::placeholder { color: rgba(255,255,255,0.4); }
+
+select {
+  width: 100%;
+  cursor: pointer;
+}
+select option {
+  background: #0a0f1a;
+  color: #fff;
+}
 
 button { 
   cursor: pointer; border: none; border-radius: 8px; 
@@ -196,13 +195,31 @@ button.ghost {
     <h2>AI Assistant</h2>
     
     <div class="info-card">
-      <strong>Model:</strong> GPT-3.5 Turbo<br>
+      <label for="modelSelect" style="display:block; font-weight:600; margin-bottom:8px; font-size:12px; opacity:0.8;">Active Model:</label>
+      <select id="modelSelect">
+        <optgroup label="OpenAI">
+          <option value="gpt-5.4-mini" selected>gpt-5.4-mini</option>
+          <option value="gpt-5.4-nano">gpt-5.4-nano</option>
+          <option value="gpt-5-mini">gpt-5-mini</option>
+          <option value="gpt-5-nano">gpt-5-nano</option>
+          <option value="gpt-4o-mini">gpt-4o-mini</option>
+          <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>        
+         </optgroup>
+        <optgroup label="DeepSeek Models (Free Tier)">
+          <option value="deepseek-r1">deepseek-r1 (Reasoning)</option>
+          <option value="deepseek-v3">deepseek-v3 (Chat)</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <div class="info-card">
+      <strong>Active Target:</strong> <br><span id="currentModelLabel" style="font-size:11px; word-break:break-all; color:var(--accent-color);">gpt-5.4-mini</span><br>
       <strong>Status:</strong> <span id="aiStatus">Ready</span>
     </div>
 
     <div class="status-indicator">
       <div class="status-dot"></div>
-      <span>AI Online</span>
+      <span>System Status: Online</span>
     </div>
 
     <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05);">
@@ -214,8 +231,8 @@ button.ghost {
 
   <main class="main">
     <div class="messages" id="messages"><div class="msg assistant">
-      <div class="meta">Hydrogen • 08:15 PM</div>
-      <div class="content">Hello! I'm Hydrogen. How can I assist you today?</div>
+      <div class="meta">Hydrogen • System</div>
+      <div class="content">Interface connected. Added all GPT-5 variants to the menu group. Note: Selecting any GPT-5 variants with your current free proxy token tier will throw a tier limitation exception unless you swap in a premium key.</div>
     </div></div>
     <div class="input-row">
       <input id="messageInput" style="flex:1" type="text" placeholder="Ask me anything...">
@@ -228,7 +245,6 @@ button.ghost {
 
 <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
 <script>
-// Particles.js config
 particlesJS("particles-js", {
   particles: {
     number: { value: 80, density: { enable: true, value_area: 800 }},
@@ -252,16 +268,25 @@ particlesJS("particles-js", {
   const msgInput = $('#messageInput');
   const sendBtn = $('#sendBtn');
   const statusEl = $('#aiStatus');
+  const modelSelectEl = $('#modelSelect');
+  const currentModelLabelEl = $('#currentModelLabel');
   
-  // ChatAnywhere API key embedded here
   const API_KEY = "sk-0F093F5sSpnQghjmh1br9L0hZk6dTEDtMIZD06O4xiWwHv0Q";
   const API_URL = 'https://api.chatanywhere.tech/v1/chat/completions';
   
   let conversationHistory = [];
 
-  function addMessage(text, isUser) {
+  modelSelectEl.onchange = () => {
+    currentModelLabelEl.textContent = modelSelectEl.value;
+  };
+
+  function addMessage(text, isUser, isError = false) {
     const div = document.createElement('div');
     div.className = 'msg' + (isUser ? ' user' : ' assistant');
+    if(isError) {
+      div.style.border = '1px solid #ff4a4a';
+      div.style.background = 'rgba(255,74,74,0.1)';
+    }
     
     const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     const label = isUser ? 'You' : 'Hydrogen';
@@ -289,6 +314,8 @@ particlesJS("particles-js", {
     msgInput.disabled = true;
     statusEl.textContent = 'Thinking...';
     
+    const chosenModel = modelSelectEl.value;
+    
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
@@ -297,13 +324,19 @@ particlesJS("particles-js", {
           'Authorization': `Bearer ${API_KEY}` 
         },
         body: JSON.stringify({ 
-          model: "gpt-3.5-turbo", 
+          model: chosenModel, 
           messages: conversationHistory 
         })
       });
       
-      let data; try { data = await response.json(); } catch(e) { console.warn("JSON Error: ", e); data = {}; }
-      const aiText = data?.choices?.[0]?.message?.content || "An error occurred";
+      const data = await response.json();
+      
+      if (!response.ok || data.error) {
+        const errorMsg = data?.error?.message || `HTTP error! Status: ${response.status}`;
+        throw new Error(`${errorMsg}`);
+      }
+      
+      const aiText = data?.choices?.[0]?.message?.content || "No data response payload returned.";
       
       conversationHistory.push({ role: "assistant", content: aiText });
       addMessage(aiText, false);
@@ -311,7 +344,7 @@ particlesJS("particles-js", {
       
     } catch (err) {
       console.error(err);
-      addMessage("Sorry, an error occurred. Please try again.", false);
+      addMessage(`[API Error]: ${err.message}`, false, true);
       statusEl.textContent = 'Error';
     } finally {
       sendBtn.disabled = false;
@@ -331,5 +364,4 @@ particlesJS("particles-js", {
   
 })();
 </script>
-</body>
-</html>
+</body></html>

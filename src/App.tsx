@@ -49,20 +49,42 @@ import {
   Upload,
   Calendar,
   AlertCircle,
-  Trash2
+  Trash2,
+  Crown,
+  ShieldCheck,
+  Key,
+  Copy,
+  RefreshCw
 } from 'lucide-react';
 import GamesEmbed from './components/GamesEmbed';
+import MovieEmbedPlayer from './components/MovieEmbedPlayer';
 import TermsModal from './components/TermsModal';
 import airChatHtml from './components/AirChat.html?raw';
 import hydrogenChatHtml from './components/HydrogenChat.html?raw';
 import eaglercraftHtml from './components/Eaglercraft.html?raw';
 import { useAuth } from './components/FirebaseProvider';
-import { loginWithGoogle, logout, auth, db, isAdminUser, addMediaToFirestore, getAllMediaFromFirestore, getUserProfile, updateUserProfile, updateMediaInFirestore } from './lib/firebase';
+import { 
+  loginWithGoogle, 
+  logout, 
+  auth, 
+  db, 
+  isAdminUser, 
+  addMediaToFirestore, 
+  getAllMediaFromFirestore, 
+  getUserProfile, 
+  updateUserProfile, 
+  updateMediaInFirestore,
+  createVipCodeInFirestore,
+  getAllVipCodesFromFirestore,
+  deleteVipCodeFromFirestore,
+  validateVipCodeInFirestore,
+  VipCodeItem
+} from './lib/firebase';
 import { collection, getDocs, doc, onSnapshot } from 'firebase/firestore';
 import { movieService } from './services/movieService';
 import { onAuthStateChanged } from 'firebase/auth';
 
-type CategoryType = 'Home' | 'Movies' | 'Games' | 'Anime' | 'Proxies' | 'Music' | 'TV Shows' | 'Books' | 'Hacks' | 'Extra';
+type CategoryType = 'Home' | 'Movies' | 'Games' | 'Anime' | 'Search' | 'Music' | 'TV Shows' | 'Books' | 'Hacks' | 'Extra';
 
 const normalizedAnime = ANIME_DATA.map(item => ({
   id: item.id || '',
@@ -83,7 +105,7 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState<CategoryType>('Home');
   const [selectedMovie, setSelectedMovie] = useState<ContentItem | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [activeView, setActiveView] = useState<'discovery' | 'watchlist' | 'library'>('discovery');
+  const [activeView, setActiveView] = useState<'discovery' | 'watchlist' | 'library' | 'vip'>('discovery');
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [libraryIds, setLibraryIds] = useState<string[]>([]);
   const [watchedIds, setWatchedIds] = useState<string[]>([]);
@@ -114,14 +136,36 @@ export default function App() {
   // Firebase Auth & Admin State from Provider
   const { user, isAdmin, loading: authLoading } = useAuth();
   const [isAdminViewOpen, setIsAdminViewOpen] = useState(false);
-  const [adminTab, setAdminTab] = useState<'content' | 'admins'>('content');
+  const [adminTab, setAdminTab] = useState<'content' | 'admins' | 'vip'>('content');
   const [adminEmails, setAdminEmails] = useState<{uid: string, email: string}[]>([]);
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [isAddingAdmin, setIsAddingAdmin] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passcodeInput, setPasscodeInput] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isVipUser, setIsVipUser] = useState<boolean>(() => {
+    return localStorage.getItem('helium_is_vip') === 'true';
+  });
+  const [hideAds, setHideAds] = useState<boolean>(() => {
+    return localStorage.getItem('helium_hide_ads') === 'true';
+  });
   const [password, setPassword] = useState('');
   const [systemStatusClickCount, setSystemStatusClickCount] = useState(0);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Owner VIP Code Generator State
+  const [vipCodesList, setVipCodesList] = useState<VipCodeItem[]>(() => {
+    try {
+      const stored = localStorage.getItem('helium_generated_vip_codes');
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [customVipCodeInput, setCustomVipCodeInput] = useState('');
+  const [customVipCodeNote, setCustomVipCodeNote] = useState('');
+  const [isGeneratingVipCode, setIsGeneratingVipCode] = useState(false);
+  const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
   // Firestore Media State
   const [firestoreMedia, setFirestoreMedia] = useState<ContentItem[]>([]);
@@ -218,14 +262,115 @@ export default function App() {
     }
   };
 
+  const handlePasscodeVip = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passcodeInput.trim()) {
+      setAuthError('Please enter a VIP code');
+      return;
+    }
+    setAuthError(null);
+    setIsLoggingIn(true);
+    
+    try {
+      const isValid = await validateVipCodeInFirestore(passcodeInput);
+      if (isValid) {
+        setIsVipUser(true);
+        localStorage.setItem('helium_is_vip', 'true');
+        setToastMessage('VIP Access Activated! 👑 Welcome VIP Member!');
+        setIsPasswordModalOpen(false);
+        
+        // If owner/admin secret code entered
+        const clean = passcodeInput.trim().toUpperCase();
+        if (['OWNER2026-CHS-BMS-HELIUM'].includes(clean)) {
+          setIsAdminViewOpen(true);
+          setAdminTab('vip');
+        }
+        setPasscodeInput('');
+      } else {
+        setAuthError('Invalid VIP Code. Please enter a valid VIP code generated by the owner.');
+      }
+    } catch (err) {
+      console.error("Error validating VIP code:", err);
+      // Local fallback unlock
+      setIsVipUser(true);
+      localStorage.setItem('helium_is_vip', 'true');
+      setToastMessage('VIP Access Activated! 👑');
+      setIsPasswordModalOpen(false);
+      setPasscodeInput('');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleGenerateVipCode = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsGeneratingVipCode(true);
+    try {
+      const codeToUse = customVipCodeInput.trim() 
+        ? customVipCodeInput.trim().toUpperCase() 
+        : `HELIUM-VIP-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+      
+      const newCode = await createVipCodeInFirestore(codeToUse, customVipCodeNote);
+      setVipCodesList(prev => [newCode, ...prev]);
+      
+      const updated = [newCode, ...vipCodesList];
+      localStorage.setItem('helium_generated_vip_codes', JSON.stringify(updated));
+      
+      setToastMessage(`VIP Code Created: ${newCode.code} 👑`);
+      setCustomVipCodeInput('');
+      setCustomVipCodeNote('');
+    } catch (err) {
+      console.error('Error generating VIP code:', err);
+      setToastMessage('Failed to generate VIP code');
+    } finally {
+      setIsGeneratingVipCode(false);
+    }
+  };
+
+  const handleDeleteVipCode = async (id: string, code: string) => {
+    try {
+      await deleteVipCodeFromFirestore(id);
+      const filtered = vipCodesList.filter(item => item.id !== id);
+      setVipCodesList(filtered);
+      localStorage.setItem('helium_generated_vip_codes', JSON.stringify(filtered));
+      setToastMessage(`Revoked VIP Code: ${code}`);
+    } catch (err) {
+      console.error('Error deleting VIP code:', err);
+    }
+  };
+
+  const handleCopyVipCode = (id: string, code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCodeId(id);
+    setToastMessage(`Copied code ${code} to clipboard! 📋`);
+    setTimeout(() => setCopiedCodeId(null), 2000);
+  };
+
+  const toggleHideAds = () => {
+    const next = !hideAds;
+    setHideAds(next);
+    localStorage.setItem('helium_hide_ads', next.toString());
+    setToastMessage(next ? 'VIP Ad-Free Mode Enabled 🛡️' : 'Ads Enabled');
+  };
+
   useEffect(() => {
     if (isAdminViewOpen) {
-        // Fetch admins if on that tab
-        const fetchAdmins = async () => {
-            const querySnapshot = await getDocs(collection(db, 'admins'));
-            setAdminEmails(querySnapshot.docs.map(doc => doc.data() as any));
+        // Fetch admins and VIP codes when admin panel opens
+        const fetchAdminData = async () => {
+            try {
+              const querySnapshot = await getDocs(collection(db, 'admins'));
+              setAdminEmails(querySnapshot.docs.map(doc => doc.data() as any));
+              
+              const codes = await getAllVipCodesFromFirestore();
+              if (codes && codes.length > 0) {
+                setVipCodesList(codes);
+                localStorage.setItem('helium_generated_vip_codes', JSON.stringify(codes));
+              }
+            } catch (err) {
+              console.error("Error fetching admin data:", err);
+            }
         };
-        fetchAdmins();
+        fetchAdminData();
     }
   }, [isAdminViewOpen]);
 
@@ -575,7 +720,7 @@ export default function App() {
     setActiveCategory(category);
     setSelectedGenre(null);
     setIsSubSidebarCollapsed(false);
-    if ((activeView === 'library' || activeView === 'watchlist') && category !== 'Movies' && category !== 'Anime' && category !== 'TV Shows' && category !== 'Books' && category !== 'Hacks') {
+    if ((activeView === 'library' || activeView === 'watchlist' || activeView === 'vip') && category !== 'Movies' && category !== 'Anime' && category !== 'TV Shows' && category !== 'Books' && category !== 'Hacks') {
       setActiveView('discovery');
     }
   };
@@ -697,7 +842,7 @@ export default function App() {
     return titleMatch || descMatch || genreMatch;
   });
 
-  const categories: CategoryType[] = ['Home', 'Movies', 'Games', 'Anime', 'TV Shows', 'Proxies', 'Music', 'Books', 'Hacks', 'Extra'];
+  const categories: CategoryType[] = ['Home', 'Movies', 'Games', 'Anime', 'Search', 'Music', 'TV Shows', 'Books', 'Hacks', 'Extra'];
 
   const stars = useMemo(() => {
     return Array.from({ length: 120 }).map((_, i) => ({
@@ -957,7 +1102,7 @@ export default function App() {
               { cat: 'Movies' as const, icon: Film, label: 'Movies' },
               { cat: 'TV Shows' as const, icon: Tv, label: 'TV Shows' },
               { cat: 'Anime' as const, icon: Sparkles, label: 'Anime' },
-              { cat: 'Proxies' as const, icon: Globe, label: 'Proxies' },
+              { cat: 'Search' as const, icon: Search, label: 'Search' },
               { cat: 'Music' as const, icon: MusicIcon, label: 'Music' },
             ].map((item) => {
               const isActive = activeCategory === item.cat;
@@ -1046,26 +1191,21 @@ export default function App() {
 
         {/* Bottom Utility Icons */}
         <div className="flex flex-col gap-3 w-full px-2 items-center">
-          {/* User Profile / Sync */}
+          {/* VIP Status Button */}
           <button
             onClick={() => setIsPasswordModalOpen(true)}
-            className={`relative group w-12 h-12 rounded-xl flex items-center justify-center transition-all border border-transparent ${
-              user 
-                ? 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20' 
-                : 'text-zinc-400 hover:text-white hover:bg-white/5'
+            className={`relative group w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+              isVipUser 
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-neon-gold' 
+                : 'text-amber-400/80 hover:text-amber-300 hover:bg-amber-500/10 border border-amber-500/20'
             }`}
           >
-            {user ? (
-              <div className="w-5 h-5 rounded-full bg-green-500 text-black flex items-center justify-center text-[10px] font-bold">
-                {user.email ? user.email.slice(0, 1).toUpperCase() : 'U'}
-              </div>
-            ) : (
-              <Shield className="w-5 h-5" />
-            )}
-            <div className="absolute left-[64px] scale-0 group-hover:scale-100 transition-transform duration-150 origin-left bg-zinc-900 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg shadow-xl border border-zinc-800 z-50 pointer-events-none whitespace-nowrap">
-              {user ? 'Account Synced' : 'Cloud Sync'}
+            <Crown className="w-5 h-5 animate-pulse" />
+            <div className="absolute left-[64px] scale-0 group-hover:scale-100 transition-transform duration-150 origin-left bg-zinc-900 text-amber-400 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg shadow-xl border border-amber-800/50 z-50 pointer-events-none whitespace-nowrap">
+              {isVipUser ? 'Helium VIP Member 👑' : 'Unlock VIP Access 👑'}
             </div>
           </button>
+
 
           {/* Settings */}
           <button
@@ -1145,7 +1285,7 @@ export default function App() {
                     { cat: 'Movies' as const, icon: Film, label: 'Movies' },
                     { cat: 'TV Shows' as const, icon: Tv, label: 'TV Shows' },
                     { cat: 'Anime' as const, icon: Sparkles, label: 'Anime' },
-                    { cat: 'Proxies' as const, icon: Globe, label: 'Proxies' },
+                    { cat: 'Search' as const, icon: Search, label: 'Search' },
                     { cat: 'Music' as const, icon: MusicIcon, label: 'Music' },
                   ].map((item) => {
                     const isActive = activeCategory === item.cat;
@@ -1228,16 +1368,6 @@ export default function App() {
               <div className="flex flex-col gap-2 pt-4 border-t border-[#151515]">
                 <button
                   onClick={() => {
-                    setIsPasswordModalOpen(true);
-                    setIsMenuOpen(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-zinc-400 hover:text-white transition-all text-sm font-medium"
-                >
-                  <Shield className="w-4 h-4" />
-                  <span>{user ? 'Account Synced' : 'Cloud Sync'}</span>
-                </button>
-                <button
-                  onClick={() => {
                     setIsSettingsOpen(true);
                     setIsMenuOpen(false);
                   }}
@@ -1275,6 +1405,16 @@ export default function App() {
                 >
                   <HomeIcon className="w-4 h-4" /> Discovery
                 </li>
+                {activeCategory === 'Movies' && (
+                  <li 
+                    className={`cursor-pointer transition-colors flex items-center gap-3 ${activeView === 'vip' ? 'text-amber-400 font-extrabold' : 'text-amber-400/80 hover:text-amber-300'}`}
+                    onClick={() => setActiveView('vip')}
+                  >
+                    <Crown className="w-4 h-4 text-amber-400 fill-amber-400/20 animate-pulse" />
+                    <span>VIP Movies 👑</span>
+                    {isVipUser && <span className="text-[9px] bg-amber-500/20 px-1.5 py-0.5 rounded text-amber-300 border border-amber-500/30">VIP</span>}
+                  </li>
+                )}
                 <li 
                   className={`cursor-pointer transition-colors flex items-center gap-3 ${activeView === 'watchlist' ? 'text-imm-accent font-semibold' : 'hover:text-imm-text'}`}
                   onClick={() => setActiveView('watchlist')}
@@ -1581,60 +1721,158 @@ export default function App() {
             )}
           </AnimatePresence>
 
-          {/* Password Modal */}
+          {/* Helium VIP & Cloud Access Modal */}
           <AnimatePresence>
             {isPasswordModalOpen && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+                className="fixed inset-0 z-[2000] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto"
                 onClick={() => setIsPasswordModalOpen(false)}
               >
                 <motion.div
-                  initial={{ scale: 0.95 }}
-                  animate={{ scale: 1 }}
+                  initial={{ scale: 0.95, y: 10 }}
+                  animate={{ scale: 1, y: 0 }}
                   onClick={e => e.stopPropagation()}
-                  className="bg-black border border-imm-accent/50 rounded-3xl p-8 max-w-sm w-full shadow-2xl relative"
+                  className="bg-zinc-950 border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative my-8"
                 >
-                  <h2 className="text-xl font-bold mb-6 text-white text-center">Cloud Sync & Access</h2>
-                  <div className="space-y-4">
-                    <p className="text-sm text-imm-text/60 text-center mb-6">
-                      Sign in with Google to sync your watchlist and library across all your devices.
-                    </p>
-                    <button 
-                      onClick={handleFirebaseLogin}
-                      disabled={isLoggingIn}
-                      className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-3 transition-all ${
-                        isLoggingIn 
-                          ? 'bg-white/40 text-black/60 cursor-not-allowed' 
-                          : 'bg-white text-black hover:bg-white/90 cursor-pointer active:scale-[0.98]'
-                      }`}
-                    >
-                      {isLoggingIn ? (
-                        <>
-                          <span className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
-                          Signing in...
-                        </>
-                      ) : (
-                        <>
-                          <LogIn className="w-5 h-5" />
-                          {user ? 'Switch Account' : 'Sign in with Google'}
-                        </>
+                  {/* Top Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center text-black font-extrabold shadow-neon-gold">
+                        <Crown className="w-5 h-5 text-black" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
+                          Helium VIP Portal
+                        </h2>
+                        <span className="text-xs text-amber-400 font-semibold">VIP Passcode Portal</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isVipUser && (
+                        <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                          <Crown className="w-3 h-3 text-amber-400" /> VIP ACTIVE
+                        </span>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsPasswordModalOpen(false);
+                          setIsAdminViewOpen(true);
+                          setAdminTab('vip');
+                        }}
+                        className="px-2.5 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 border border-amber-500/30 text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                        title="Open Owner VIP Code Generator"
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-400" /> Owner Generator
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* VIP Code Form ONLY */}
+                  <form onSubmit={handlePasscodeVip} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-300 mb-1.5 flex items-center gap-1.5">
+                        <Key className="w-3.5 h-3.5 text-amber-400" /> Enter VIP Code
+                      </label>
+                      <input
+                        type="text"
+                        value={passcodeInput}
+                        onChange={(e) => {
+                          setPasscodeInput(e.target.value);
+                          if (authError) setAuthError(null);
+                        }}
+                        placeholder="e.g. VIP2026 or HELIUMVIP"
+                        className="w-full bg-zinc-900 border border-zinc-800 focus:border-amber-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-colors uppercase font-mono tracking-widest text-center placeholder:text-zinc-600 font-bold"
+                      />
+                    </div>
+
+                    {authError && (
+                      <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium text-center">
+                        {authError}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      className="w-full py-3.5 rounded-xl font-extrabold bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black transition-all flex items-center justify-center gap-2 text-sm shadow-neon-gold active:scale-[0.98]"
+                    >
+                      <Crown className="w-4 h-4 text-black" /> Unlock VIP Privileges
                     </button>
-                    {isAdmin && (
+
+                    <div className="pt-2 flex justify-between items-center text-xs">
+                      <span className="text-zinc-500 font-medium text-[11px]">Are you the site owner?</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsPasswordModalOpen(false);
+                          setIsAdminViewOpen(true);
+                          setAdminTab('vip');
+                        }}
+                        className="font-extrabold text-amber-400 hover:text-amber-300 flex items-center gap-1 hover:underline text-xs"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Owner Generator 👑
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* VIP Member Perks List */}
+                  <div className="mt-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-2.5">
+                    <div className="font-extrabold text-amber-300 uppercase tracking-wider flex items-center justify-between">
+                      <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4" /> VIP Member Perks</span>
+                      {isVipUser && <span className="text-[10px] text-green-400 font-bold">UNLOCKED</span>}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-zinc-300 font-medium text-[11px]">
+                      <div className="flex items-center gap-1.5">⚡ Ad-Free Mode Toggle</div>
+                      <div className="flex items-center gap-1.5">🚀 4K Ultra Player Links</div>
+                      <div className="flex items-center gap-1.5">🛡️ Cloud Sync Across Devices</div>
+                      <div className="flex items-center gap-1.5">👑 Exclusive VIP Badge</div>
+                    </div>
+
+                    {isVipUser && (
+                      <div className="pt-2 border-t border-amber-500/20 flex items-center justify-between">
+                        <span className="text-zinc-300 font-bold">Ad-Free Mode:</span>
+                        <button
+                          type="button"
+                          onClick={toggleHideAds}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                            hideAds ? 'bg-green-500 text-black' : 'bg-zinc-800 text-zinc-300 hover:text-white'
+                          }`}
+                        >
+                          {hideAds ? '🛡️ Ads Hidden' : 'Show Ads'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Smartlink Sponsor Link */}
+                  <a
+                    href="https://www.effectivecpmnetwork.com/ptmy6p2xu?key=ae59fc84a1711413c3e8446fbff90dc0"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 block p-3 bg-gradient-to-r from-purple-900/30 via-amber-900/30 to-indigo-900/30 border border-amber-500/30 hover:border-amber-400 rounded-xl text-center group transition-all"
+                  >
+                    <div className="flex items-center justify-center gap-2 text-xs font-bold text-amber-300 group-hover:underline">
+                      <span>⚡ Smartlink for helium-on.top</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </div>
+                  </a>
+
+                  {/* Sign Out & Close */}
+                  <div className="mt-4 flex gap-2">
+                    {user && (
                       <button 
                         onClick={() => logout()}
-                        className="w-full bg-red-500/10 text-red-500 py-3 rounded-xl font-semibold hover:bg-red-500/20 transition-all flex items-center justify-center gap-3 border border-red-500/20"
+                        className="flex-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 py-2.5 rounded-xl font-bold text-xs transition-all border border-red-500/20 flex items-center justify-center gap-1.5"
                       >
-                        <LogOut className="w-5 h-5" />
-                        Sign Out
+                        <LogOut className="w-3.5 h-3.5" /> Sign Out
                       </button>
                     )}
                     <button 
                       onClick={() => setIsPasswordModalOpen(false)} 
-                      className="w-full py-3 text-imm-text/40 hover:text-white transition-colors text-xs uppercase tracking-widest font-bold"
+                      className="flex-1 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl transition-colors text-xs font-bold border border-zinc-800"
                     >
                       Close
                     </button>
@@ -1666,18 +1904,24 @@ export default function App() {
                   >
                     <X className="w-5 h-5" />
                   </button>
-                  <div className="flex gap-4 mb-6 border-b border-white/5">
+                  <div className="flex gap-4 mb-6 border-b border-white/5 overflow-x-auto pb-1">
                     <button 
                         onClick={() => setAdminTab('content')}
-                        className={`pb-2 text-xs uppercase tracking-widest font-bold transition-colors ${adminTab === 'content' ? 'text-imm-accent border-b-2 border-imm-accent' : 'text-imm-text/40 hover:text-white'}`}
+                        className={`pb-2 text-xs uppercase tracking-widest font-bold transition-colors whitespace-nowrap ${adminTab === 'content' ? 'text-imm-accent border-b-2 border-imm-accent' : 'text-imm-text/40 hover:text-white'}`}
                     >
                         Content
                     </button>
                     <button 
                         onClick={() => setAdminTab('admins')}
-                        className={`pb-2 text-xs uppercase tracking-widest font-bold transition-colors ${adminTab === 'admins' ? 'text-imm-accent border-b-2 border-imm-accent' : 'text-imm-text/40 hover:text-white'}`}
+                        className={`pb-2 text-xs uppercase tracking-widest font-bold transition-colors whitespace-nowrap ${adminTab === 'admins' ? 'text-imm-accent border-b-2 border-imm-accent' : 'text-imm-text/40 hover:text-white'}`}
                     >
                         Admins
+                    </button>
+                    <button 
+                        onClick={() => setAdminTab('vip')}
+                        className={`pb-2 text-xs uppercase tracking-widest font-bold transition-colors flex items-center gap-1.5 whitespace-nowrap ${adminTab === 'vip' ? 'text-amber-400 border-b-2 border-amber-400 font-extrabold' : 'text-amber-500/60 hover:text-amber-300'}`}
+                    >
+                        <Crown className="w-3.5 h-3.5" /> Owner VIP Codes
                     </button>
                   </div>
 
@@ -1788,7 +2032,7 @@ export default function App() {
                       {isAddingMedia ? 'Uploading...' : 'Publish Content'}
                     </button>
                   </form>
-                  ) : (
+                  ) : adminTab === 'admins' ? (
                     <div className="space-y-6 max-h-[60vh] overflow-y-auto px-2 custom-scrollbar">
                          <div className="space-y-4">
                             <h3 className="text-xs font-bold uppercase tracking-widest text-imm-text/60">Current Admins</h3>
@@ -1804,6 +2048,134 @@ export default function App() {
                          <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-[10px] text-yellow-500/80 leading-relaxed">
                             To add new admins, you currently need to modify the <code>firestore.rules</code> or the <code>src/lib/firebase.ts</code> file directly to include their email address in the whitelist. The database will automatically register your account as admin if you login with <code>chaosclancontact1@gmail.com</code>.
                          </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-6 max-h-[60vh] overflow-y-auto px-2 custom-scrollbar">
+                      {/* Creator Form */}
+                      <div className="p-5 rounded-2xl bg-zinc-950 border border-amber-500/30 space-y-4 shadow-xl">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Crown className="w-5 h-5 text-amber-400" />
+                            <h3 className="text-sm font-extrabold text-white">Owner VIP Code Generator</h3>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCustomVipCodeInput(`HELIUM-VIP-${Math.random().toString(36).substring(2, 7).toUpperCase()}`)}
+                            className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 transition-colors"
+                          >
+                            <RefreshCw className="w-3 h-3" /> Auto Code
+                          </button>
+                        </div>
+
+                        <form onSubmit={handleGenerateVipCode} className="space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[10px] uppercase font-bold text-zinc-400 mb-1">
+                                Custom Code (Leave blank for auto)
+                              </label>
+                              <input
+                                type="text"
+                                value={customVipCodeInput}
+                                onChange={(e) => setCustomVipCodeInput(e.target.value)}
+                                placeholder="e.g. ACEVIP2026"
+                                className="w-full bg-zinc-900 border border-zinc-800 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-xs text-white uppercase font-mono tracking-wider focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] uppercase font-bold text-zinc-400 mb-1">
+                                Label / Note (Optional)
+                              </label>
+                              <input
+                                type="text"
+                                value={customVipCodeNote}
+                                onChange={(e) => setCustomVipCodeNote(e.target.value)}
+                                placeholder="e.g. For Friend / Giveaway"
+                                className="w-full bg-zinc-900 border border-zinc-800 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <button
+                            type="submit"
+                            disabled={isGeneratingVipCode}
+                            className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black font-extrabold text-xs transition-all shadow-neon-gold flex items-center justify-center gap-2 active:scale-[0.98]"
+                          >
+                            {isGeneratingVipCode ? (
+                              <>
+                                <Activity className="w-4 h-4 animate-spin text-black" /> Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-4 h-4 text-black" /> Create &amp; Save VIP Code 👑
+                              </>
+                            )}
+                          </button>
+                        </form>
+                      </div>
+
+                      {/* Generated Codes List */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-400 flex items-center gap-1.5">
+                            <Key className="w-3.5 h-3.5 text-amber-400" /> Active Generated Codes ({vipCodesList.length})
+                          </h4>
+                          <span className="text-[10px] text-zinc-500">Live in Database</span>
+                        </div>
+
+                        {vipCodesList.length === 0 ? (
+                          <div className="p-8 text-center bg-zinc-950/60 rounded-2xl border border-zinc-800 text-zinc-500 text-xs">
+                            No custom VIP codes generated yet. Use the generator above to create your first code!
+                          </div>
+                        ) : (
+                          <div className="space-y-2 max-h-[30vh] overflow-y-auto no-scrollbar pr-1">
+                            {vipCodesList.map((item) => (
+                              <div key={item.id} className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-amber-500/40 transition-all gap-3">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-mono font-extrabold text-amber-300 text-sm tracking-wider bg-amber-500/10 px-2.5 py-0.5 rounded border border-amber-500/20 truncate">
+                                      {item.code}
+                                    </span>
+                                    {item.note && (
+                                      <span className="text-[10px] bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full font-medium truncate">
+                                        {item.note}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-3 text-[10px] text-zinc-500 mt-1">
+                                    <span>Created: {new Date(item.createdAt).toLocaleDateString()}</span>
+                                    <span>Uses: {item.uses || 0}</span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyVipCode(item.id, item.code)}
+                                    className={`p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                                      copiedCodeId === item.id
+                                        ? 'bg-green-500 text-black'
+                                        : 'bg-zinc-800 text-amber-300 hover:bg-amber-500 hover:text-black'
+                                    }`}
+                                    title="Copy code"
+                                  >
+                                    {copiedCodeId === item.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                    <span className="hidden sm:inline">{copiedCodeId === item.id ? 'Copied' : 'Copy'}</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteVipCode(item.id, item.code)}
+                                    className="p-2 rounded-lg bg-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-red-500/20 transition-colors"
+                                    title="Revoke code"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </motion.div>
@@ -2029,14 +2401,16 @@ export default function App() {
                 className="flex-1 flex flex-col justify-center items-center max-w-4xl mx-auto w-full py-12 px-4 select-none"
               >
                 {/* Central Logo */}
-                <div className="text-center mb-10">
-                  <h1 className="text-8xl md:text-9xl font-serif italic tracking-wide text-imm-text drop-shadow-[0_0_35px_var(--accent-glow)] select-none">
-                    Helium
-                  </h1>
+                <div className="w-full max-w-xl md:max-w-2xl mx-auto text-center mb-8 flex justify-center items-center">
+                  <img 
+                    src="https://raw.githubusercontent.com/1sunW/ICONS-FOR-LINKS/refs/heads/main/Helium-Logo.png" 
+                    alt="Helium" 
+                    className="w-full h-auto max-h-44 md:max-h-60 object-contain drop-shadow-[0_0_40px_var(--accent-glow)] select-none pointer-events-none"
+                  />
                 </div>
 
                 {/* Centered Large Search Bar */}
-                <div className={`relative w-full max-w-2xl ${searchHistory.length > 0 ? 'mb-6' : 'mb-12'} group`}>
+                <div className={`relative w-full max-w-2xl ${searchHistory.length > 0 ? 'mb-6' : 'mb-8'} group`}>
                   <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500 group-focus-within:text-imm-accent transition-colors" />
                   <input
                     type="text"
@@ -2059,6 +2433,40 @@ export default function App() {
                     </button>
                   )}
                 </div>
+
+                {/* Embedded HTML Smartlink Banner (Direct link embedded in site - no button push needed) */}
+                {!hideAds && (
+                  <div className="w-full max-w-2xl mb-8">
+                    <a 
+                      href="https://www.effectivecpmnetwork.com/ptmy6p2xu?key=ae59fc84a1711413c3e8446fbff90dc0"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group block w-full p-4 rounded-2xl bg-gradient-to-r from-purple-950/70 via-zinc-900 to-amber-950/70 border border-amber-500/40 hover:border-amber-300 transition-all shadow-xl hover:shadow-purple-500/20"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-300 font-extrabold border border-amber-500/30 shrink-0">
+                            <Zap className="w-5 h-5" />
+                          </div>
+                          <div className="text-left min-w-0">
+                            <div className="text-sm font-extrabold text-white group-hover:text-amber-300 transition-colors flex items-center gap-1.5 truncate">
+                              <span>Smartlink for helium-on.top</span>
+                              <ExternalLink className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            </div>
+                            <div className="text-xs text-zinc-400 truncate">
+                              Sponsored ad partner for ultra-fast streaming servers
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-xs font-extrabold text-black bg-gradient-to-r from-amber-400 to-amber-500 px-3.5 py-1.5 rounded-xl shadow-neon-gold whitespace-nowrap hidden sm:inline-flex items-center gap-1">
+                          Visit Site <ExternalLink className="w-3 h-3" />
+                        </span>
+                      </div>
+                    </a>
+                  </div>
+                )}
+
+
 
                 {/* Search History Tags */}
                 {searchHistory.length > 0 && (
@@ -2144,6 +2552,137 @@ export default function App() {
 
             {(activeCategory === 'Movies' || activeCategory === 'Anime' || activeCategory === 'TV Shows' || (activeCategory === 'Books' && activeView !== 'discovery')) && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-10">
+                {/* Movies Sub-Navigation Bar */}
+                {activeCategory === 'Movies' && (
+                  <div className="flex items-center gap-2 pb-2 border-b border-zinc-800/80 overflow-x-auto no-scrollbar">
+                    <button
+                      onClick={() => setActiveView('discovery')}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
+                        activeView === 'discovery'
+                          ? 'bg-imm-accent text-black shadow-lg scale-[1.02]'
+                          : 'bg-zinc-900/90 text-zinc-400 hover:text-white border border-zinc-800'
+                      }`}
+                    >
+                      <HomeIcon className="w-4 h-4" /> Discovery
+                    </button>
+                    <button
+                      onClick={() => setActiveView('vip')}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer border ${
+                        activeView === 'vip'
+                          ? 'bg-amber-500 text-black border-amber-400 shadow-neon-gold scale-[1.02]'
+                          : 'bg-zinc-900/90 text-amber-400 border-amber-500/40 hover:bg-amber-500/10'
+                      }`}
+                    >
+                      <Crown className="w-4 h-4 text-amber-400 fill-amber-400/30 animate-pulse" />
+                      <span>VIP Movies 👑</span>
+                      {isVipUser && <span className="text-[9px] bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-extrabold">ACTIVE</span>}
+                    </button>
+                    <button
+                      onClick={() => setActiveView('watchlist')}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
+                        activeView === 'watchlist'
+                          ? 'bg-imm-accent text-black shadow-lg scale-[1.02]'
+                          : 'bg-zinc-900/90 text-zinc-400 hover:text-white border border-zinc-800'
+                      }`}
+                    >
+                      <Heart className="w-4 h-4" /> My Watchlist ({libraryIds.length})
+                    </button>
+                    <button
+                      onClick={() => setActiveView('library')}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
+                        activeView === 'library'
+                          ? 'bg-imm-accent text-black shadow-lg scale-[1.02]'
+                          : 'bg-zinc-900/90 text-zinc-400 hover:text-white border border-zinc-800'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-4 h-4" /> My Library ({watchedIds.length})
+                    </button>
+                  </div>
+                )}
+
+                {/* VIP Movies View Section */}
+                {activeCategory === 'Movies' && activeView === 'vip' && (
+                  <section className="space-y-6">
+                    <div className="p-6 lg:p-8 rounded-3xl bg-gradient-to-br from-zinc-950 via-zinc-900 to-amber-950/30 border border-amber-500/30 shadow-2xl space-y-6">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-amber-500/20">
+                        <div className="flex items-center gap-4">
+                          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 shadow-neon-gold">
+                            <Crown className="w-8 h-8 text-amber-400" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h1 className="serif text-3xl font-extrabold text-white">VIP Movies Portal 👑</h1>
+                              {isVipUser && (
+                                <span className="text-xs font-extrabold text-amber-300 bg-amber-500/20 px-3 py-1 rounded-full border border-amber-500/40 flex items-center gap-1 shadow-sm">
+                                  <Crown className="w-3.5 h-3.5 text-amber-400" /> VIP UNLOCKED
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-amber-400/80 font-medium mt-1">Exclusive Ultra-HD Servers, Priority Bandwidth & Passcode Activation</p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsAdminViewOpen(true);
+                            setAdminTab('vip');
+                          }}
+                          className="px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 border border-amber-500/30 text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-sm self-start md:self-auto"
+                        >
+                          <Sparkles className="w-4 h-4 text-amber-400" /> Owner Generator 👑
+                        </button>
+                      </div>
+
+                      {/* VIP Code Activation Box */}
+                      <div className="p-5 rounded-2xl bg-zinc-950/90 border border-amber-500/30">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-extrabold text-white tracking-wide uppercase flex items-center gap-2">
+                            <Key className="w-4 h-4 text-amber-400" /> Activate VIP Passcode
+                          </span>
+                          {isVipUser ? (
+                            <span className="text-[10px] text-green-400 font-bold uppercase">Passcode Verified</span>
+                          ) : (
+                            <span className="text-[10px] text-amber-400/80 font-bold uppercase">Code Required</span>
+                          )}
+                        </div>
+                        <form onSubmit={handlePasscodeVip} className="flex flex-col sm:flex-row gap-2">
+                          <div className="relative flex-1">
+                            <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-400" />
+                            <input
+                              type="text"
+                              value={passcodeInput}
+                              onChange={(e) => {
+                                setPasscodeInput(e.target.value);
+                                if (authError) setAuthError(null);
+                              }}
+                              placeholder="Enter VIP Code (e.g. VIP2026)"
+                              className="w-full bg-zinc-900 border border-zinc-800 focus:border-amber-500 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white uppercase font-mono tracking-wider focus:outline-none transition-colors"
+                            />
+                          </div>
+                          <button
+                            type="submit"
+                            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black text-xs font-extrabold transition-all shrink-0 flex items-center justify-center gap-1.5 shadow-neon-gold active:scale-[0.98]"
+                          >
+                            <Crown className="w-4 h-4 text-black" /> Activate VIP
+                          </button>
+                        </form>
+                        {authError && <div className="mt-2 text-xs text-red-400 text-center font-medium">{authError}</div>}
+                      </div>
+
+                      {/* VIP Streaming Player Engine */}
+                      <div className="space-y-4 pt-2">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-5 h-5 text-amber-400" />
+                          <h2 className="text-lg font-bold text-white">VIP Multi-Server Ultra-HD Player</h2>
+                        </div>
+                        <MovieEmbedPlayer onOpenExternal={(url) => window.open(url, '_blank')} />
+                      </div>
+                    </div>
+                  </section>
+                )}
+
+
                 {/* Featured Spotlight (Only if Discovery) */}
                 {activeView === 'discovery' && activeCategory === 'Movies' && (
                   <section className="relative h-72 shrink-0 rounded-3xl overflow-hidden border border-white/5 glow-amber">
@@ -2379,62 +2918,17 @@ export default function App() {
               </motion.div>
             )}
 
-            {activeCategory === 'Proxies' && (
+            {activeCategory === 'Search' && (
               <motion.div 
                 initial={{ opacity: 0, y: 20 }} 
                 animate={{ opacity: 1, y: 0 }}
-                className="flex-1"
+                className="flex-1 w-full h-full p-6 lg:p-10"
               >
-                <div className="mb-12">
-                  <h2 className="serif text-5xl italic mb-4">Proxy Portals</h2>
-                  <p className="text-imm-text/40 font-light max-w-xl italic text-lg leading-relaxed">
-                    A collection of secure gateways designed for seamless, unrestricted access. Select a group to explore available mirrors.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {PROXY_GROUPS.map((group, index) => (
-                    <motion.div
-                      key={group.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y:0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="group bg-imm-sidebar p-8 rounded-[2.5rem] border border-imm-border hover:border-imm-accent transition-all relative overflow-hidden"
-                    >
-                      <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-20 transition-opacity">
-                        <Shield className="w-12 h-12 text-imm-accent" />
-                      </div>
-                      <div className="relative z-10">
-                        <div className="w-12 h-12 bg-imm-accent/10 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-imm-accent group-hover:text-black transition-all">
-                          <Globe className="w-6 h-6" />
-                        </div>
-                        <h3 className="serif text-2xl mb-2">{group.name}</h3>
-                        <p className="text-sm text-imm-text/40 mb-6 font-light">{group.description}</p>
-                        
-                        <div className="space-y-2">
-                          {group.links.length > 0 ? (
-                            group.links.map(link => (
-                              <a 
-                                key={link.id}
-                                href={link.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center justify-between p-3 bg-white/5 rounded-xl text-xs hover:bg-imm-accent hover:text-black transition-all group/link"
-                              >
-                                <span>{link.name}</span>
-                                <ExternalLink className="w-3 h-3 opacity-40 group-hover/link:opacity-100" />
-                              </a>
-                            ))
-                          ) : (
-                            <div className="p-3 border border-dashed border-imm-border rounded-xl text-[10px] text-imm-text/20 uppercase tracking-widest text-center">
-                              Coming Soon
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+                <iframe 
+                  src="https://onyx.helium-on.top" 
+                  className="w-full h-full rounded-2xl border border-imm-border"
+                  title="Search"
+                />
               </motion.div>
             )}
 
@@ -2703,7 +3197,7 @@ export default function App() {
               </motion.div>
             )}
 
-            {activeCategory !== 'Home' && activeCategory !== 'Movies' && activeCategory !== 'Anime' && activeCategory !== 'TV Shows' && activeCategory !== 'Proxies' && activeCategory !== 'Music' && activeCategory !== 'Books' && activeCategory !== 'Hacks' && activeCategory !== 'Games' && activeCategory !== 'Extra' && (
+            {activeCategory !== 'Home' && activeCategory !== 'Movies' && activeCategory !== 'Anime' && activeCategory !== 'TV Shows' && activeCategory !== 'Search' && activeCategory !== 'Music' && activeCategory !== 'Books' && activeCategory !== 'Hacks' && activeCategory !== 'Games' && activeCategory !== 'Extra' && (
               <motion.div 
                 initial={{ opacity: 0, y: 20 }} 
                 animate={{ opacity: 1, y: 0 }}
@@ -2972,40 +3466,60 @@ export default function App() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex space-x-3">
-                      {selectedMovie.driveLink ? (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        {(selectedMovie.type === 'movie' || selectedMovie.type === 'tv' || !selectedMovie.type) && (
+                          <button
+                            onClick={() => {
+                              setSelectedMovie(null);
+                              setActiveCategory('Movies');
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="flex-1 bg-gradient-to-r from-amber-400 to-amber-500 text-black py-4 px-6 rounded-full font-extrabold hover:from-amber-300 hover:to-amber-400 transition-all flex items-center justify-center space-x-2 shadow-neon-gold"
+                          >
+                            <Play className="w-5 h-5 fill-black" />
+                            <span>Stream Online (12 Servers)</span>
+                          </button>
+                        )}
+                        {selectedMovie.driveLink ? (
+                          <button 
+                            onClick={() => {
+                              setClickCounts(prev => ({ ...prev, [selectedMovie.id]: (prev[selectedMovie.id] || 0) + 1 }));
+                              window.open(selectedMovie.driveLink, '_blank');
+                            }} 
+                            className="flex-1 bg-zinc-900 border border-zinc-800 text-white py-4 px-6 rounded-full font-bold hover:bg-zinc-800 transition-all flex items-center justify-center space-x-2"
+                          >
+                            {selectedMovie.type === 'book' || selectedMovie.type === 'manga' ? <BookOpen className="w-5 h-5 fill-current" /> : selectedMovie.type === 'hack' ? <Zap className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
+                            <span>Google Drive Link</span>
+                          </button>
+                        ) : (
+                          <button onClick={() => handleWatch(selectedMovie)} className="flex-1 bg-zinc-900 border border-zinc-800 text-white py-4 px-6 rounded-full font-bold hover:bg-zinc-800 transition-all flex items-center justify-center space-x-2">
+                            <Play className="w-5 h-5 fill-current" />
+                            <span>Google Drive Search</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex space-x-3">
                         <button 
-                          onClick={() => {
-                            setClickCounts(prev => ({ ...prev, [selectedMovie.id]: (prev[selectedMovie.id] || 0) + 1 }));
-                            window.open(selectedMovie.driveLink, '_blank');
-                          }} 
-                          className="flex-1 bg-imm-accent text-black py-4 rounded-full font-bold hover:bg-imm-accent-hover transition-all flex items-center justify-center space-x-3"
+                          onClick={() => toggleLibrary(selectedMovie.id)}
+                          title={libraryIds.includes(selectedMovie.id) ? "Remove from Watchlist" : "Add to Watchlist"}
+                          className={`flex-1 py-3 rounded-full border border-imm-border hover:bg-black/40 transition-all flex items-center justify-center space-x-2
+                            ${libraryIds.includes(selectedMovie.id) ? 'bg-imm-accent/20 text-imm-accent' : 'bg-imm-card text-imm-text'}`}
                         >
-                          {selectedMovie.type === 'book' || selectedMovie.type === 'manga' ? <BookOpen className="w-5 h-5 fill-current" /> : selectedMovie.type === 'hack' ? <Zap className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
-                          <span>Open in Google Drive</span>
+                          <Heart className={`w-5 h-5 ${libraryIds.includes(selectedMovie.id) ? 'fill-current' : ''}`} />
+                          <span className="text-xs font-semibold uppercase tracking-widest">{libraryIds.includes(selectedMovie.id) ? 'Watchlisted' : 'Watchlist'}</span>
                         </button>
-                      ) : (
-                        <button onClick={() => handleWatch(selectedMovie)} className="flex-1 bg-imm-accent text-black py-4 rounded-full font-bold hover:bg-imm-accent-hover transition-all flex items-center justify-center space-x-3">
-                          <Play className="w-5 h-5 fill-current" />
-                          <span>Open in Google Drive</span>
+                        <button
+                          onClick={() => toggleWatched(selectedMovie.id)}
+                          title={watchedIds.includes(selectedMovie.id) ? "Remove from Library" : "Add to Completed Library"}
+                          className={`flex-1 py-3 rounded-full border border-imm-border hover:bg-black/40 transition-all flex items-center justify-center space-x-2
+                            ${watchedIds.includes(selectedMovie.id) ? 'bg-green-500/20 text-green-500' : 'bg-imm-card text-imm-text'}`}
+                        >
+                          <CheckCircle2 className={`w-5 h-5 ${watchedIds.includes(selectedMovie.id) ? '' : ''}`} />
+                          <span className="text-xs font-semibold uppercase tracking-widest">{watchedIds.includes(selectedMovie.id) ? 'Finished' : 'Mark Finished'}</span>
                         </button>
-                      )}
-                      <button 
-                        onClick={() => toggleLibrary(selectedMovie.id)}
-                        title={libraryIds.includes(selectedMovie.id) ? "Remove from Watchlist" : "Add to Watchlist"}
-                        className={`px-6 rounded-full border border-imm-border hover:bg-black/40 transition-all flex items-center justify-center
-                          ${libraryIds.includes(selectedMovie.id) ? 'bg-imm-accent/20 text-imm-accent' : 'bg-imm-card text-imm-text'}`}
-                      >
-                        <Heart className={`w-5 h-5 ${libraryIds.includes(selectedMovie.id) ? 'fill-current' : ''}`} />
-                      </button>
-                      <button
-                        onClick={() => toggleWatched(selectedMovie.id)}
-                        title={watchedIds.includes(selectedMovie.id) ? "Remove from Library" : "Add to Completed Library"}
-                        className={`px-6 rounded-full border border-imm-border hover:bg-black/40 transition-all flex items-center justify-center
-                          ${watchedIds.includes(selectedMovie.id) ? 'bg-green-500/20 text-green-500' : 'bg-imm-card text-imm-text'}`}
-                      >
-                        <CheckCircle2 className={`w-5 h-5 ${watchedIds.includes(selectedMovie.id) ? '' : ''}`} />
-                      </button>
+                      </div>
                     </div>
                   )}
                 </div>
