@@ -54,7 +54,8 @@ import {
   ShieldCheck,
   Key,
   Copy,
-  RefreshCw
+  RefreshCw,
+  Lock
 } from 'lucide-react';
 import GamesEmbed from './components/GamesEmbed';
 import MovieEmbedPlayer from './components/MovieEmbedPlayer';
@@ -1084,8 +1085,8 @@ export default function App() {
       </div>
 
       {/* Persistent Desktop Left Sidebar (Helium Style) */}
-      <aside className="hidden md:flex flex-col items-center justify-between py-6 w-[76px] bg-imm-sidebar border-r border-imm-border shrink-0 z-50">
-        <div className="flex flex-col items-center gap-6 w-full">
+      <aside className="hidden md:flex flex-col items-center justify-between py-6 w-[76px] h-screen overflow-y-auto no-scrollbar bg-imm-sidebar border-r border-imm-border shrink-0 z-50">
+        <div className="flex flex-col items-center gap-6 w-full shrink-0">
           {/* Logo Icon / Launcher */}
           <div 
             onClick={() => handleCategorySelect('Home')}
@@ -1212,7 +1213,7 @@ export default function App() {
         </div>
 
         {/* Bottom Utility Icons */}
-        <div className="flex flex-col gap-3 w-full px-2 items-center">
+        <div className="flex flex-col gap-3 w-full px-2 items-center shrink-0 pt-4 mt-auto">
           {/* VIP Status Button */}
           <button
             onClick={() => setIsPasswordModalOpen(true)}
@@ -1278,7 +1279,7 @@ export default function App() {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-72 max-w-[80vw] h-full bg-imm-sidebar border-r border-imm-border p-6 flex flex-col justify-between"
+              className="relative w-72 max-w-[80vw] h-full bg-imm-sidebar border-r border-imm-border p-6 flex flex-col justify-between overflow-y-auto custom-scrollbar"
             >
               <div className="flex flex-col gap-6">
                 <div className="flex justify-between items-center pb-4 border-b border-imm-border">
@@ -1407,7 +1408,7 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden relative w-full h-full">
         {/* Sidebar Navigation (Context Sensitive Sub-Sidebar) */}
         {(activeCategory === 'Movies' || activeCategory === 'Anime' || activeCategory === 'TV Shows' || activeCategory === 'Books' || activeCategory === 'Hacks') && !isSubSidebarCollapsed && (
-          <aside className="hidden lg:flex w-64 bg-imm-sidebar border-r border-imm-border flex-col p-8 z-20 shrink-0">
+          <aside className="hidden lg:flex w-64 bg-imm-sidebar border-r border-imm-border flex-col p-8 z-20 shrink-0 overflow-y-auto custom-scrollbar h-full">
             <div className="flex items-center justify-between gap-3 mb-10">
               <span className="text-[10px] uppercase tracking-widest text-imm-accent/80 font-bold">Navigation</span>
               <button
@@ -2708,14 +2709,35 @@ export default function App() {
                         {authError && <div className="mt-2 text-xs text-red-400 text-center font-medium">{authError}</div>}
                       </div>
 
-                      {/* VIP Streaming Player Engine */}
-                      <div className="space-y-4 pt-2">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-5 h-5 text-amber-400" />
-                          <h2 className="text-lg font-bold text-white">VIP Multi-Server Ultra-HD Player</h2>
+                      {/* VIP Streaming Player Engine - Strictly for VIP Users */}
+                      {isVipUser ? (
+                        <div className="space-y-4 pt-2">
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="w-5 h-5 text-amber-400" />
+                            <h2 className="text-lg font-bold text-white">VIP Multi-Server Ultra-HD Player</h2>
+                          </div>
+                          <MovieEmbedPlayer onOpenExternal={(url) => window.open(url, '_blank')} />
                         </div>
-                        <MovieEmbedPlayer onOpenExternal={(url) => window.open(url, '_blank')} />
-                      </div>
+                      ) : (
+                        <div className="p-8 rounded-2xl bg-zinc-950/80 border border-amber-500/20 text-center space-y-4 my-4">
+                          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto shadow-neon-gold">
+                            <Lock className="w-8 h-8 text-amber-400" />
+                          </div>
+                          <div className="space-y-1">
+                            <h3 className="text-xl font-extrabold text-white">VIP Ultra-HD Player Locked 👑</h3>
+                            <p className="text-xs text-amber-400/80 max-w-md mx-auto">
+                              VIP Movies streaming requires an active VIP Passcode. Enter your VIP passcode above to unlock 4K Ultra-HD streaming, priority bandwidth, and zero ads.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setIsPasswordModalOpen(true)}
+                            className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-extrabold inline-flex items-center gap-2 shadow-neon-gold transition-all cursor-pointer"
+                          >
+                            <Crown className="w-4 h-4 text-black" /> Open VIP Activation Portal
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </section>
                 )}
