@@ -1891,7 +1891,7 @@ export default function App() {
                               handlePasscodeVip(e);
                             }
                           }}
-                          placeholder="e.g. VIP2026 or HELIUMVIP"
+                          placeholder="Enter Code..."
                           className="w-full bg-zinc-900 border border-zinc-800 focus:border-amber-500 rounded-xl pl-4 pr-24 py-3.5 text-sm text-white focus:outline-none transition-colors uppercase font-mono tracking-widest text-left placeholder:text-zinc-600 font-bold"
                         />
                         <button
@@ -1906,21 +1906,6 @@ export default function App() {
                             <><span>CONFIRM</span> <ArrowRight className="w-3.5 h-3.5" /></>
                           )}
                         </button>
-                      </div>
-
-                      {/* Tablet / Mobile Quick Tap Codes */}
-                      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2">
-                        <span className="text-[10px] text-zinc-500 font-extrabold uppercase shrink-0">Tap Code:</span>
-                        {['VIP2026', 'HELIUMVIP', 'ACEVIP'].map((preset) => (
-                          <button
-                            key={preset}
-                            type="button"
-                            onClick={(e) => handlePasscodeVip(e, preset)}
-                            className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-[10px] font-extrabold text-amber-300 transition-all shrink-0 cursor-pointer touch-manipulation active:scale-95"
-                          >
-                            {preset} ⚡
-                          </button>
-                        ))}
                       </div>
                     </div>
 
@@ -2860,7 +2845,7 @@ export default function App() {
                                     handlePasscodeVip(e);
                                   }
                                 }}
-                                placeholder="Enter VIP Code (e.g. VIP2026)"
+                                placeholder="Enter Code..."
                                 className="w-full bg-zinc-900 border border-zinc-800 focus:border-amber-500 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white uppercase font-mono tracking-wider focus:outline-none transition-colors"
                               />
                             </div>
@@ -2873,21 +2858,6 @@ export default function App() {
                               {isLoggingIn ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : <Crown className="w-4 h-4 text-black" />}
                               <span>{isLoggingIn ? 'Verifying...' : 'Activate VIP'}</span>
                             </button>
-                          </div>
-
-                          {/* Quick Tap Code Pills */}
-                          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
-                            <span className="text-[10px] text-zinc-500 font-extrabold uppercase shrink-0">Quick Code:</span>
-                            {['VIP2026', 'HELIUMVIP', 'ACEVIP'].map((preset) => (
-                              <button
-                                key={preset}
-                                type="button"
-                                onClick={(e) => handlePasscodeVip(e, preset)}
-                                className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-[10px] font-extrabold text-amber-300 transition-all shrink-0 cursor-pointer touch-manipulation active:scale-95"
-                              >
-                                {preset} ⚡
-                              </button>
-                            ))}
                           </div>
                         </form>
                         {authError && <div className="mt-2 text-xs text-red-400 text-center font-medium">{authError}</div>}
