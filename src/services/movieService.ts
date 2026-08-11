@@ -14,8 +14,13 @@ export enum OperationType {
 }
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errMsg = error instanceof Error ? error.message : String(error);
+  if (errMsg.includes('unavailable') || errMsg.includes('offline') || errMsg.includes('Could not reach Cloud Firestore')) {
+    console.warn(`Firestore operating offline/unavailable (${operationType} on ${path}):`, errMsg);
+    return;
+  }
   const errInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errMsg,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,

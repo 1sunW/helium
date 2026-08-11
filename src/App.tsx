@@ -55,7 +55,9 @@ import {
   Key,
   Copy,
   RefreshCw,
-  Lock
+  Lock,
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
 import GamesEmbed from './components/GamesEmbed';
 import MovieEmbedPlayer from './components/MovieEmbedPlayer';
@@ -277,17 +279,21 @@ export default function App() {
     }
   };
 
-  const handlePasscodeVip = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!passcodeInput.trim()) {
+  const handlePasscodeVip = async (e?: React.FormEvent | React.MouseEvent | React.KeyboardEvent, directCode?: string) => {
+    if (e) {
+      e.preventDefault();
+      if ('stopPropagation' in e) e.stopPropagation();
+    }
+    const codeToUse = directCode || passcodeInput;
+    if (!codeToUse.trim()) {
       setAuthError('Please enter a VIP code');
       return;
     }
     setAuthError(null);
     setIsLoggingIn(true);
 
-    const clean = passcodeInput.trim().toUpperCase();
-    if (['OWNER2026-CHS-BMS-HELIUM'].includes(clean)) {
+    const clean = codeToUse.trim().toUpperCase();
+    if (['OWNER2026-CHS-BMS-HELIUM', 'OWNER2026'].includes(clean)) {
       setIsVipUser(true);
       localStorage.setItem('helium_is_vip', 'true');
       setIsOwner(true);
@@ -302,7 +308,7 @@ export default function App() {
     }
     
     try {
-      const isValid = await validateVipCodeInFirestore(passcodeInput);
+      const isValid = await validateVipCodeInFirestore(clean);
       if (isValid) {
         setIsVipUser(true);
         localStorage.setItem('helium_is_vip', 'true');
@@ -647,67 +653,64 @@ export default function App() {
     let title = '';
     let icon = '';
     if (cloakSelection === 'Custom') {
-      title = customCloakName;
-      icon = customCloakIcon;
+      title = customCloakName || 'Google';
+      icon = customCloakIcon || 'https://www.google.com/favicon.ico';
     } else {
       const preset = CLOAK_PRESETS.find(p => p.name === cloakSelection);
       if (preset) {
         title = preset.name;
         icon = preset.icon;
+      } else {
+        title = 'Google';
+        icon = 'https://www.google.com/favicon.ico';
       }
     }
 
-    const win = window.open('about:blank', '_blank');
-    if (!win) {
-      alert("Popup blocked! Please allow popups for this site.");
-      return;
+    try {
+      const targetUrl = window.location.href;
+      const win = window.open('about:blank', '_blank');
+      if (!win) {
+        setToastMessage("Popup blocked by tablet/browser! Please allow popups for this site.");
+        return;
+      }
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>${title.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</title>
+            <link rel="icon" type="image/x-icon" href="${icon}">
+            <style>
+              html, body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                background-color: #000;
+              }
+              iframe {
+                width: 100%;
+                height: 100%;
+                border: none;
+                outline: none;
+              }
+            </style>
+          </head>
+          <body>
+            <iframe src="${targetUrl}" allow="fullscreen; autoplay; clipboard-write; encrypted-media; picture-in-picture"></iframe>
+          </body>
+        </html>
+      `;
+
+      win.document.open();
+      win.document.write(htmlContent);
+      win.document.close();
+      setToastMessage("Cloaked tab launched successfully!");
+    } catch (err) {
+      console.error("Error opening cloaked tab:", err);
+      setToastMessage("Unable to open cloaked tab. Try launching directly.");
     }
-
-    const doc = win.document;
-    if (!doc) {
-      console.error("Could not load the tab document object.");
-      return;
-    }
-    
-    doc.title = title;
-    
-    const docEl = doc.documentElement;
-    if (!docEl) {
-      console.error("documentElement not found in custom tab cloaker.");
-      return;
-    }
-
-    let head = doc.head;
-    if (!head) {
-      head = doc.createElement('head');
-      docEl.appendChild(head);
-    }
-
-    let body = doc.body;
-    if (!body) {
-      body = doc.createElement('body');
-      docEl.appendChild(body);
-    }
-    
-    const link = doc.createElement('link');
-    link.rel = 'icon';
-    link.href = icon;
-    head.appendChild(link);
-
-    const iframe = doc.createElement('iframe');
-    iframe.src = window.location.href;
-    iframe.style.width = '100vw';
-    iframe.style.height = '100vh';
-    iframe.style.border = 'none';
-    iframe.style.margin = '0';
-    iframe.style.padding = '0';
-
-    body.style.margin = '0';
-    body.style.padding = '0';
-    body.style.overflow = 'hidden';
-    body.appendChild(iframe);
-
-    window.location.replace('https://google.com');
   };
 
   // Laptop Apps state
@@ -1170,7 +1173,7 @@ export default function App() {
                 {isMoreMenuOpen && (
                   <>
                     <div 
-                      className="fixed inset-0 z-40 bg-transparent" 
+                      className="fixed inset-0 z-[1999] bg-black/30 backdrop-blur-[1px]" 
                       onClick={() => setIsMoreMenuOpen(false)}
                     />
                     <motion.div
@@ -1178,8 +1181,11 @@ export default function App() {
                       animate={{ opacity: 1, x: 0, scale: 1 }}
                       exit={{ opacity: 0, x: -10, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute left-[64px] top-0 z-50 w-48 bg-[#0d0d0d] border border-zinc-800 rounded-xl shadow-2xl p-2 flex flex-col gap-1"
+                      className="fixed left-[84px] top-1/2 -translate-y-1/2 z-[2000] w-52 bg-[#0d0d0d] border border-zinc-800 rounded-2xl shadow-2xl p-2.5 flex flex-col gap-1.5"
                     >
+                      <div className="px-3 py-1.5 text-[10px] uppercase tracking-widest font-bold text-imm-accent/70 border-b border-zinc-800/80 mb-1">
+                        More Categories
+                      </div>
                       {[
                         { cat: 'Books' as const, icon: BookOpen, label: 'Books' },
                         { cat: 'Hacks' as const, icon: Terminal, label: 'Hacks' },
@@ -1193,13 +1199,13 @@ export default function App() {
                               handleCategorySelect(item.cat);
                               setIsMoreMenuOpen(false);
                             }}
-                            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-left transition-all text-xs font-medium ${
+                            className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all text-xs font-semibold cursor-pointer ${
                               isActive 
-                                ? 'bg-imm-accent/20 text-imm-accent border border-imm-accent/30' 
-                                : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
+                                ? 'bg-imm-accent/20 text-imm-accent border border-imm-accent/40 shadow-neon-purple' 
+                                : 'text-zinc-300 hover:text-white hover:bg-white/10 border border-transparent'
                             }`}
                           >
-                            <item.icon className="w-4 h-4" />
+                            <item.icon className="w-4 h-4 text-imm-accent" />
                             <span>{item.label}</span>
                           </button>
                         );
@@ -1468,7 +1474,7 @@ export default function App() {
 
       <div className="flex flex-1 overflow-hidden relative w-full h-full">
         {/* Sidebar Navigation (Context Sensitive Sub-Sidebar) */}
-        {(activeCategory === 'Movies' || activeCategory === 'Anime' || activeCategory === 'TV Shows' || activeCategory === 'Books' || activeCategory === 'Hacks') && !isSubSidebarCollapsed && (
+        {(activeCategory === 'Movies' || activeCategory === 'Anime' || activeCategory === 'TV Shows' || activeCategory === 'Books' || activeCategory === 'Hacks' || activeCategory === 'Extra') && !isSubSidebarCollapsed && (
           <aside className="hidden lg:flex w-64 bg-imm-sidebar border-r border-imm-border flex-col p-8 z-20 shrink-0 overflow-y-auto custom-scrollbar h-full">
             <div className="flex items-center justify-between gap-3 mb-10">
               <span className="text-[10px] uppercase tracking-widest text-imm-accent/80 font-bold">Navigation</span>
@@ -1553,7 +1559,7 @@ export default function App() {
 
         <main className="flex-1 flex flex-col relative overflow-y-auto bg-black/40 z-10 no-scrollbar">
           {/* Collapsible Sub-Sidebar Navigation Handle */}
-          {isSubSidebarCollapsed && (activeCategory === 'Movies' || activeCategory === 'Anime' || activeCategory === 'TV Shows' || activeCategory === 'Books' || activeCategory === 'Hacks') && (
+          {isSubSidebarCollapsed && (activeCategory === 'Movies' || activeCategory === 'Anime' || activeCategory === 'TV Shows' || activeCategory === 'Books' || activeCategory === 'Hacks' || activeCategory === 'Extra') && (
             <button
               onClick={() => setIsSubSidebarCollapsed(false)}
               className="hidden lg:flex fixed left-[76px] top-1/2 -translate-y-1/2 z-30 bg-[#050505]/95 border-y border-r border-[#151515] text-zinc-400 hover:text-white px-2 py-4 rounded-r-xl transition-all shadow-xl flex flex-col items-center gap-1 cursor-pointer group"
@@ -1819,7 +1825,7 @@ export default function App() {
                   initial={{ scale: 0.95, y: 10 }}
                   animate={{ scale: 1, y: 0 }}
                   onClick={e => e.stopPropagation()}
-                  className="bg-zinc-950 border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative my-8"
+                  className="bg-zinc-950 border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative my-auto max-h-[90vh] overflow-y-auto custom-scrollbar"
                 >
                   {/* Close Modal Button */}
                   <button
@@ -1871,16 +1877,51 @@ export default function App() {
                       <label className="block text-xs font-bold text-zinc-300 mb-1.5 flex items-center gap-1.5">
                         <Key className="w-3.5 h-3.5 text-amber-400" /> Enter VIP Code
                       </label>
-                      <input
-                        type="text"
-                        value={passcodeInput}
-                        onChange={(e) => {
-                          setPasscodeInput(e.target.value);
-                          if (authError) setAuthError(null);
-                        }}
-                        placeholder="e.g. VIP2026 or HELIUMVIP"
-                        className="w-full bg-zinc-900 border border-zinc-800 focus:border-amber-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-colors uppercase font-mono tracking-widest text-center placeholder:text-zinc-600 font-bold"
-                      />
+                      <div className="relative flex items-center">
+                        <input
+                          type="text"
+                          value={passcodeInput}
+                          onChange={(e) => {
+                            setPasscodeInput(e.target.value);
+                            if (authError) setAuthError(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handlePasscodeVip(e);
+                            }
+                          }}
+                          placeholder="e.g. VIP2026 or HELIUMVIP"
+                          className="w-full bg-zinc-900 border border-zinc-800 focus:border-amber-500 rounded-xl pl-4 pr-24 py-3.5 text-sm text-white focus:outline-none transition-colors uppercase font-mono tracking-widest text-left placeholder:text-zinc-600 font-bold"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => handlePasscodeVip(e)}
+                          disabled={isLoggingIn}
+                          className="absolute right-1.5 top-1.5 bottom-1.5 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs transition-all flex items-center gap-1 shadow-md cursor-pointer shrink-0 active:scale-95 touch-manipulation disabled:opacity-50"
+                        >
+                          {isLoggingIn ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <><span>CONFIRM</span> <ArrowRight className="w-3.5 h-3.5" /></>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Tablet / Mobile Quick Tap Codes */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2">
+                        <span className="text-[10px] text-zinc-500 font-extrabold uppercase shrink-0">Tap Code:</span>
+                        {['VIP2026', 'HELIUMVIP', 'ACEVIP'].map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            onClick={(e) => handlePasscodeVip(e, preset)}
+                            className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-[10px] font-extrabold text-amber-300 transition-all shrink-0 cursor-pointer touch-manipulation active:scale-95"
+                          >
+                            {preset} ⚡
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     {authError && (
@@ -1891,9 +1932,15 @@ export default function App() {
 
                     <button
                       type="submit"
-                      className="w-full py-3.5 rounded-xl font-extrabold bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black transition-all flex items-center justify-center gap-2 text-sm shadow-neon-gold active:scale-[0.98]"
+                      onClick={(e) => handlePasscodeVip(e)}
+                      disabled={isLoggingIn}
+                      className="w-full py-3.5 rounded-xl font-extrabold bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black transition-all flex items-center justify-center gap-2 text-sm shadow-neon-gold active:scale-[0.98] cursor-pointer touch-manipulation disabled:opacity-50"
                     >
-                      <Crown className="w-4 h-4 text-black" /> Unlock VIP Privileges
+                      {isLoggingIn ? (
+                        <><Loader2 className="w-4 h-4 animate-spin text-black" /> Verifying Code...</>
+                      ) : (
+                        <><Crown className="w-4 h-4 text-black" /> Unlock VIP Privileges</>
+                      )}
                     </button>
 
                     {isOwner && (
@@ -2656,10 +2703,10 @@ export default function App() {
               </motion.div>
             )}
 
-            {(activeCategory === 'Movies' || activeCategory === 'Anime' || activeCategory === 'TV Shows' || (activeCategory === 'Books' && activeView !== 'discovery')) && (
+            {(activeCategory === 'Movies' || activeCategory === 'Anime' || activeCategory === 'TV Shows' || activeCategory === 'Books' || activeCategory === 'Hacks' || activeCategory === 'Extra') && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-10">
                 {/* Responsive Sub-Navigation & Genre Filter Bar for Mobile/Tablet or Collapsed Sidebar */}
-                {(activeCategory === 'Movies' || activeCategory === 'Anime' || activeCategory === 'TV Shows' || activeCategory === 'Books' || activeCategory === 'Hacks') && (
+                {(activeCategory === 'Movies' || activeCategory === 'Anime' || activeCategory === 'TV Shows' || activeCategory === 'Books' || activeCategory === 'Hacks' || activeCategory === 'Extra') && (
                   <div className={`flex flex-col gap-3 pb-3 border-b border-zinc-800/80 ${!isSubSidebarCollapsed ? 'lg:hidden' : ''}`}>
                     {/* View Tabs */}
                     <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
@@ -2796,26 +2843,52 @@ export default function App() {
                             <span className="text-[10px] text-amber-400/80 font-bold uppercase">Code Required</span>
                           )}
                         </div>
-                        <form onSubmit={handlePasscodeVip} className="flex flex-col sm:flex-row gap-2">
-                          <div className="relative flex-1">
-                            <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-400" />
-                            <input
-                              type="text"
-                              value={passcodeInput}
-                              onChange={(e) => {
-                                setPasscodeInput(e.target.value);
-                                if (authError) setAuthError(null);
-                              }}
-                              placeholder="Enter VIP Code (e.g. VIP2026)"
-                              className="w-full bg-zinc-900 border border-zinc-800 focus:border-amber-500 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white uppercase font-mono tracking-wider focus:outline-none transition-colors"
-                            />
+                        <form onSubmit={handlePasscodeVip} className="space-y-2">
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <div className="relative flex-1">
+                              <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-400" />
+                              <input
+                                type="text"
+                                value={passcodeInput}
+                                onChange={(e) => {
+                                  setPasscodeInput(e.target.value);
+                                  if (authError) setAuthError(null);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handlePasscodeVip(e);
+                                  }
+                                }}
+                                placeholder="Enter VIP Code (e.g. VIP2026)"
+                                className="w-full bg-zinc-900 border border-zinc-800 focus:border-amber-500 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white uppercase font-mono tracking-wider focus:outline-none transition-colors"
+                              />
+                            </div>
+                            <button
+                              type="submit"
+                              onClick={(e) => handlePasscodeVip(e)}
+                              disabled={isLoggingIn}
+                              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black text-xs font-extrabold transition-all shrink-0 flex items-center justify-center gap-1.5 shadow-neon-gold active:scale-[0.98] cursor-pointer touch-manipulation disabled:opacity-50"
+                            >
+                              {isLoggingIn ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : <Crown className="w-4 h-4 text-black" />}
+                              <span>{isLoggingIn ? 'Verifying...' : 'Activate VIP'}</span>
+                            </button>
                           </div>
-                          <button
-                            type="submit"
-                            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black text-xs font-extrabold transition-all shrink-0 flex items-center justify-center gap-1.5 shadow-neon-gold active:scale-[0.98]"
-                          >
-                            <Crown className="w-4 h-4 text-black" /> Activate VIP
-                          </button>
+
+                          {/* Quick Tap Code Pills */}
+                          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
+                            <span className="text-[10px] text-zinc-500 font-extrabold uppercase shrink-0">Quick Code:</span>
+                            {['VIP2026', 'HELIUMVIP', 'ACEVIP'].map((preset) => (
+                              <button
+                                key={preset}
+                                type="button"
+                                onClick={(e) => handlePasscodeVip(e, preset)}
+                                className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-[10px] font-extrabold text-amber-300 transition-all shrink-0 cursor-pointer touch-manipulation active:scale-95"
+                              >
+                                {preset} ⚡
+                              </button>
+                            ))}
+                          </div>
                         </form>
                         {authError && <div className="mt-2 text-xs text-red-400 text-center font-medium">{authError}</div>}
                       </div>
@@ -3405,7 +3478,7 @@ export default function App() {
       {/* Laptop Methods Modal */}
       <AnimatePresence>
         {activeMethod && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -3469,7 +3542,7 @@ export default function App() {
       {/* Extra Info Modal */}
       <AnimatePresence>
         {activeExtra && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -3481,7 +3554,7 @@ export default function App() {
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className={`relative w-full ${activeExtra.partners ? 'max-w-2xl' : 'max-w-sm'} bg-imm-card border border-imm-border rounded-[2.5rem] overflow-hidden shadow-2xl`}
+              className={`relative w-full ${activeExtra.partners ? 'max-w-2xl' : 'max-w-sm'} bg-imm-card border border-imm-border rounded-[2.5rem] overflow-hidden shadow-2xl my-auto max-h-[90vh] overflow-y-auto custom-scrollbar`}
             >
               <div className="p-10 flex flex-col items-center">
                 <div className="flex items-center justify-between w-full mb-8">
@@ -3557,7 +3630,7 @@ export default function App() {
       {/* Movie Detail Modal */}
       <AnimatePresence>
         {selectedMovie && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setSelectedMovie(null)} />
             <motion.div layoutId={selectedMovie.id} className="relative w-full max-w-5xl bg-imm-sidebar rounded-[2rem] overflow-hidden shadow-2xl flex flex-col md:flex-row max-h-[90vh] border border-imm-border">
               <button onClick={() => setSelectedMovie(null)} className="absolute top-6 right-6 z-10 p-2 bg-white/10 backdrop-blur rounded-full hover:bg-white/20 transition-all">

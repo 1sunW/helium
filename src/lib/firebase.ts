@@ -18,6 +18,7 @@ import {
   deleteDoc, 
   getDocs, 
   getDoc, 
+  getDocFromServer,
   query, 
   where, 
   orderBy, 
@@ -32,6 +33,18 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+// Connection test on boot as recommended by skill guidelines
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+  } catch (error) {
+    if (error instanceof Error && (error.message.includes('offline') || error.message.includes('unavailable') || error.message.includes('Could not reach Cloud Firestore'))) {
+      console.warn("Firestore client operating offline or unavailable:", error.message);
+    }
+  }
+}
+testConnection();
 
 // Error handler based on skill instructions
 export enum OperationType {
@@ -61,8 +74,14 @@ interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errMsg = error instanceof Error ? error.message : String(error);
+  // Gracefully handle connection or offline errors so app functions smoothly in offline mode
+  if (errMsg.includes('unavailable') || errMsg.includes('offline') || errMsg.includes('Could not reach Cloud Firestore')) {
+    console.warn(`Firestore operating offline/unavailable (${operationType} on ${path}):`, errMsg);
+    return;
+  }
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errMsg,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
