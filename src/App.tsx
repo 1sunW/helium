@@ -1586,7 +1586,7 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className={`fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 ${isAirChatFullscreen ? "!p-0" : ""}`}
-              onClick={() => { setIsAirChatOpen(false); setIsAirChatFullscreen(false); }}
+              onClick={(e) => { if (e.target === e.currentTarget) { setIsAirChatOpen(false); setIsAirChatFullscreen(false); } }}
             >
               <motion.div
                 initial={{ scale: 0.95 }}
@@ -1616,7 +1616,7 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className={`fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 ${isHydrogenChatFullscreen ? "!p-0" : ""}`}
-              onClick={() => { setIsHydrogenChatOpen(false); setIsHydrogenChatFullscreen(false); }}
+              onClick={(e) => { if (e.target === e.currentTarget) { setIsHydrogenChatOpen(false); setIsHydrogenChatFullscreen(false); } }}
             >
               <motion.div
                 initial={{ scale: 0.95 }}
@@ -1646,7 +1646,7 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className={`fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 ${isEaglercraftFullscreen ? "!p-0" : ""}`}
-              onClick={() => { setIsEaglercraftOpen(false); setIsEaglercraftFullscreen(false); }}
+              onClick={(e) => { if (e.target === e.currentTarget) { setIsEaglercraftOpen(false); setIsEaglercraftFullscreen(false); } }}
             >
               <motion.div
                 initial={{ scale: 0.95 }}
@@ -1749,7 +1749,7 @@ export default function App() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-                onClick={() => setIsChangelogOpen(false)}
+                onClick={(e) => { if (e.target === e.currentTarget) setIsChangelogOpen(false); }}
               >
                 <motion.div
                   initial={{ scale: 0.95 }}
@@ -1813,7 +1813,7 @@ export default function App() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[2000] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto"
-                onClick={() => setIsPasswordModalOpen(false)}
+                onClick={(e) => { if (e.target === e.currentTarget) setIsPasswordModalOpen(false); }}
               >
                 <motion.div
                   initial={{ scale: 0.95, y: 10 }}
@@ -1986,7 +1986,7 @@ export default function App() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
-                onClick={() => setIsAdminViewOpen(false)}
+                onClick={(e) => { if (e.target === e.currentTarget) setIsAdminViewOpen(false); }}
               >
                 <motion.div
                   initial={{ scale: 0.95 }}
