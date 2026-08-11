@@ -2658,51 +2658,93 @@ export default function App() {
 
             {(activeCategory === 'Movies' || activeCategory === 'Anime' || activeCategory === 'TV Shows' || (activeCategory === 'Books' && activeView !== 'discovery')) && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-10">
-                {/* Movies Sub-Navigation Bar */}
-                {activeCategory === 'Movies' && (
-                  <div className="flex items-center gap-2 pb-2 border-b border-zinc-800/80 overflow-x-auto no-scrollbar">
-                    <button
-                      onClick={() => setActiveView('discovery')}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
-                        activeView === 'discovery'
-                          ? 'bg-imm-accent text-black shadow-lg scale-[1.02]'
-                          : 'bg-zinc-900/90 text-zinc-400 hover:text-white border border-zinc-800'
-                      }`}
-                    >
-                      <HomeIcon className="w-4 h-4" /> Discovery
-                    </button>
-                    <button
-                      onClick={() => setActiveView('vip')}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer border ${
-                        activeView === 'vip'
-                          ? 'bg-amber-500 text-black border-amber-400 shadow-neon-gold scale-[1.02]'
-                          : 'bg-zinc-900/90 text-amber-400 border-amber-500/40 hover:bg-amber-500/10'
-                      }`}
-                    >
-                      <Crown className="w-4 h-4 text-amber-400 fill-amber-400/30 animate-pulse" />
-                      <span>VIP Movies 👑</span>
-                      {isVipUser && <span className="text-[9px] bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-extrabold">ACTIVE</span>}
-                    </button>
-                    <button
-                      onClick={() => setActiveView('watchlist')}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
-                        activeView === 'watchlist'
-                          ? 'bg-imm-accent text-black shadow-lg scale-[1.02]'
-                          : 'bg-zinc-900/90 text-zinc-400 hover:text-white border border-zinc-800'
-                      }`}
-                    >
-                      <Heart className="w-4 h-4" /> My Watchlist ({libraryIds.length})
-                    </button>
-                    <button
-                      onClick={() => setActiveView('library')}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer ${
-                        activeView === 'library'
-                          ? 'bg-imm-accent text-black shadow-lg scale-[1.02]'
-                          : 'bg-zinc-900/90 text-zinc-400 hover:text-white border border-zinc-800'
-                      }`}
-                    >
-                      <CheckCircle2 className="w-4 h-4" /> My Library ({watchedIds.length})
-                    </button>
+                {/* Responsive Sub-Navigation & Genre Filter Bar for Mobile/Tablet or Collapsed Sidebar */}
+                {(activeCategory === 'Movies' || activeCategory === 'Anime' || activeCategory === 'TV Shows' || activeCategory === 'Books' || activeCategory === 'Hacks') && (
+                  <div className={`flex flex-col gap-3 pb-3 border-b border-zinc-800/80 ${!isSubSidebarCollapsed ? 'lg:hidden' : ''}`}>
+                    {/* View Tabs */}
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                      <button
+                        onClick={() => setActiveView('discovery')}
+                        className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+                          activeView === 'discovery'
+                            ? 'bg-imm-accent text-black shadow-lg scale-[1.02]'
+                            : 'bg-zinc-900/90 text-zinc-400 hover:text-white border border-zinc-800'
+                        }`}
+                      >
+                        <HomeIcon className="w-4 h-4" /> Discovery
+                      </button>
+                      
+                      {activeCategory === 'Movies' && (
+                        <button
+                          onClick={() => setActiveView('vip')}
+                          className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer border shrink-0 ${
+                            activeView === 'vip'
+                              ? 'bg-amber-500 text-black border-amber-400 shadow-neon-gold scale-[1.02]'
+                              : 'bg-zinc-900/90 text-amber-400 border-amber-500/40 hover:bg-amber-500/10'
+                          }`}
+                        >
+                          <Crown className="w-4 h-4 text-amber-400 fill-amber-400/30 animate-pulse" />
+                          <span>VIP Movies 👑</span>
+                          {isVipUser && <span className="text-[9px] bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-extrabold">ACTIVE</span>}
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => setActiveView('watchlist')}
+                        className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+                          activeView === 'watchlist'
+                            ? 'bg-imm-accent text-black shadow-lg scale-[1.02]'
+                            : 'bg-zinc-900/90 text-zinc-400 hover:text-white border border-zinc-800'
+                        }`}
+                      >
+                        <Heart className="w-4 h-4" /> My Watchlist ({libraryIds.length})
+                      </button>
+
+                      <button
+                        onClick={() => setActiveView('library')}
+                        className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+                          activeView === 'library'
+                            ? 'bg-imm-accent text-black shadow-lg scale-[1.02]'
+                            : 'bg-zinc-900/90 text-zinc-400 hover:text-white border border-zinc-800'
+                        }`}
+                      >
+                        <CheckCircle2 className="w-4 h-4" /> My Library ({watchedIds.length})
+                      </button>
+                    </div>
+
+                    {/* Genre Pills (only shown on discovery view when genres are available) */}
+                    {activeView === 'discovery' && availableGenres.length > 0 && (
+                      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 border-t border-zinc-900/50 pt-3">
+                        <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-extrabold shrink-0 mr-1">Genres:</span>
+                        <button
+                          onClick={() => setSelectedGenre(null)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+                            !selectedGenre
+                              ? 'bg-imm-accent/20 text-imm-accent border border-imm-accent/30 font-extrabold'
+                              : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                          }`}
+                        >
+                          All Genres
+                        </button>
+                        {availableGenres.map(genre => {
+                          const count = displayedItems.filter(item => item.genre && Array.isArray(item.genre) && item.genre.includes(genre)).length;
+                          return (
+                            <button
+                              key={genre}
+                              onClick={() => setSelectedGenre(genre)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+                                selectedGenre === genre
+                                  ? 'bg-imm-accent/20 text-imm-accent border border-imm-accent/30 font-extrabold'
+                                  : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                              }`}
+                            >
+                              <span>{genre}</span>
+                              <span className="text-[10px] ml-1 opacity-50">({count})</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 
